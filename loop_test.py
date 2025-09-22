@@ -23,14 +23,14 @@ async def main():
     def random_data():
         return {'time': time.time(), 'value': 50 + random.uniform(-10, 10)}
 
-    thread = threading.Thread(target=producer_thread, args=(loop, queue, random_data, 1/3),
+    thread = threading.Thread(target=producer_thread, args=(loop, queue, random_data, 0.1),
                               daemon=True)
     thread.start()
 
 
     broadcasters = [
-            partial(log_data, value='time'), 
-            partial(log_data, value='value'),
+            # partial(log_data, value='time'), 
+            # partial(log_data, value='value'),
             broadcast_to_clients,
     ]
 
