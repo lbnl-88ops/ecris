@@ -74,6 +74,9 @@ async def main():
 if __name__ == "__main__":
     try:
         qasync.run(main())
-    except (KeyboardInterrupt, RuntimeError, websockets.exceptions.ConnectionClosedError):
+    except RuntimeError as exc:
+        _log.error(f'Runtime Error: {exc}')
+        _log.info("Shutting down plotter client. Window may have been closed.")
+    except (KeyboardInterrupt, websockets.exceptions.ConnectionClosedError):
         _log.info("Shutting down plotter client.")
 
