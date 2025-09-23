@@ -9,7 +9,7 @@ _log = getLogger(__name__)
 
 class DataDevice(ABC):
     @abstractmethod
-    async def get_data() -> Dict:
+    async def get_data(self) -> Dict:
         pass
 
     @property
