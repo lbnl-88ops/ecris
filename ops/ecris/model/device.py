@@ -62,10 +62,9 @@ class TelnetDevice(DataDevice):
     def _host(self) -> str:
         return f'{self._ip}:{self._port}'
 
-
     async def connect(self) -> None:
         async with self._connection_lock:
-            host = f'{self._ip}:{self._port}'
+            host = self._host
             if self.is_connected:
                 _log.debug(f'Already connected to {host}.')
                 return
@@ -74,8 +73,9 @@ class TelnetDevice(DataDevice):
             _log.info(f'Attempting to connect to {host}...')
 
             try:
+                ip_str = str(self._ip)
                 self._reader, self._writer = await asyncio.wait_for(
-                    open_connection(self._ip, self._port), timeout=3.0)
+                    open_connection(ip_str, self._port), timeout=3.0)
                 _log.info(f'Successfully connected to {host}.')
             except (ConnectionRefusedError, OSError, asyncio.TimeoutError) as e:
                 _log.error(f'Failed to connect to {host}: {e}')
@@ -98,7 +98,7 @@ class TelnetDevice(DataDevice):
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot write.")
         
-        self._writer.write(command + '\n')
+        self._writer.write(command + '\r\n')
         await self._writer.drain()
 
     async def _read_until(self, separator: str = '\n') -> str:

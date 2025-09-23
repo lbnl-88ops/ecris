@@ -9,13 +9,14 @@ from .device import TelnetDevice
 _log = getLogger(__name__)
 
 class Ammeter(TelnetDevice):
-    def __init__(self, read_frequency: float,
+    def __init__(self, read_frequency_per_min: float,
                  ip: str | None = None, port: int | None = None):
         super().__init__(ip, port)
-        self.read_frequency = read_frequency
-        if not 1 <= self.read_frequency <= 2000:
-            raise ValueError(f'Bad value of read frequency {self.read_frequency} (must be 1-2000)')
-        self.read_hz = 1/self.read_frequency * 60.0
+        
+        if not 1 <= read_frequency_per_min <= 2000:
+            raise ValueError(f'Bad value of read frequency {read_frequency_per_min} (must be 1-2000)')
+
+        self.nplc_setting = 1 / read_frequency_per_min * 60.0
 
     async def get_data(self) -> Dict:
         await self._write('meas:curr?')
@@ -33,7 +34,7 @@ class Ammeter(TelnetDevice):
             ':sens:func "curr"',
             ':sens:curr:rang:auto on',
             ':sens:curr:nplc:auto off',
-            f':sens:curr:nplc {self.read_hz}',
+            f':sens:curr:nplc {self.nplc_setting}',
             ':inp on'
         ]:
             await self._write(command)
