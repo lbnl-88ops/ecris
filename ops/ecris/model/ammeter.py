@@ -1,16 +1,19 @@
 from logging import getLogger
 from ipaddress import ip_address, IPv4Address
 
-from .device import DataDevice
+from .device import DataDevice, TelnetDevice
 
 _log = getLogger(__name__)
 
-class Ammeter(DataDevice):
+class Ammeter(TelnetDevice):
     def __init__(self, 
                  ip: str | IPv4Address | None, 
                  port: int | None):
-        self.ip = ip_address(ip) if ip is not None else None
-        self.port: int | None = port
+        super().__init__()
+        if ip is not None:
+            self.ip = ip
+        if port is not None:
+            self.port = port
 
     def connect(self) -> None | RuntimeError:
         if self.ip is None and self.port is None:
