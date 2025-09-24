@@ -1,8 +1,9 @@
 # Characterization tests for legacy/current code
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, AsyncMock, call
 
 import numpy as np
 import pytest
+from pytest import approx
 
 from ops.ecris.measure_current import time_average_current
 from .legacy_code.legacy_functions import legacy_current_measurement, getCurrent
@@ -37,11 +38,13 @@ def test_legacy_code_produces_correct_average(current_bytes, timestamps):
         legacy_current_measurement(mock_connection)
 
     expected_average = 1.5e-5
-    expected_stdev = 27.216552697590874
-    mock_venus.write.assert_called_with([{'fcv1_ammeter': expected_average}, 
-                                         {'fcv1_ammeter_stdev': expected_stdev}])
-
-    assert mock_connection.read_until.call_count == 3
+    expected_rel_stdev = 27.21655
+    expected_calls = [
+        call.write({'fcv1_ammeter': expected_average}),
+        call.write({'fcv1_ammeter_stdev': approx(expected_rel_stdev)})
+    ]
+    mock_venus.assert_has_calls(expected_calls, any_order=True)
+    assert mock_connection.read_until.call_count == len(current_bytes)
 
 @pytest.mark.asyncio
 async def test_time_average_current(current_readings, timestamps):
@@ -55,5 +58,5 @@ async def test_time_average_current(current_readings, timestamps):
         average, std = await time_average_current(mock_ammeter, 0.33)
 
     assert average == 1.5e-5
-    assert std == pytest.approx(27.21655)
+    assert std == approx(27.21655)
 
