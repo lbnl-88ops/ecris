@@ -9,8 +9,10 @@ _log = getLogger(__name__)
 
 class Ammeter(TelnetDevice):
     def __init__(self, read_frequency_per_min: float,
-                 ip: str | None = None, port: int | None = None):
-        super().__init__(ip, port)
+                 ip: str | None = None, 
+                 port: int | None = None,
+                 prompt: str = 'B2900A>'):
+        super().__init__(ip, port, prompt)
         
         if not 1 <= read_frequency_per_min <= 2000:
             raise ValueError(f'Bad value of read frequency {read_frequency_per_min} (must be 1-2000)')

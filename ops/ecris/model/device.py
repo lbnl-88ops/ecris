@@ -35,9 +35,11 @@ class DataDevice(ABC):
         raise NotImplementedError
 
 class TelnetDevice(DataDevice):
-    def __init__(self, ip: str | None = None, port: int | None = None):
+    def __init__(self, ip: str | None = None, port: int | None = None,
+                 prompt: str | None = None):
         self._ip: IPv4Address | IPv6Address | None = None
         self._port: int | None = None
+        self._prompt = prompt
         self._reader: TelnetReader | None = None
         self._writer: TelnetWriter | None = None
         self._connection_lock = asyncio.Lock()
@@ -115,13 +117,17 @@ class TelnetDevice(DataDevice):
         self._writer.write(command + '\r\n')
         await self._writer.drain()
 
-    async def _read_until(self, separator: str = '\n') -> str:
+    async def _read_until(self, separator: bytes = b'\n') -> str:
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot read.")
         
         try:
-            response = await self._reader.readuntil(separator.encode('ascii'))
+            raw_bytes = await self._reader.readuntil(separator)
+            response = raw_bytes.decode('ascii')
+            if self._prompt is not None and response.startswith(self._prompt):
+                response = response.removeprefix(self._prompt)
             return response.strip()
+
         except asyncio.IncompleteReadError:
             _log.error("Connection closed while waiting for response.")
             await self.disconnect()
