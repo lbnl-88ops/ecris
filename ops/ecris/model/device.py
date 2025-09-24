@@ -8,16 +8,31 @@ from telnetlib3 import open_connection, TelnetReader, TelnetWriter
 _log = getLogger(__name__)
 
 class DataDevice(ABC):
+    """
+    An abstract base class for any device that produces a dictionary of data.
+    """
+
     @abstractmethod
     async def get_data(self) -> Dict:
+        """
+        Fetches a single data point from the device. The keys in the returned
+        dictionary must match the list provided by the `data_keys` property.
+        """
         pass
 
     @property
-    def data_types(self) -> Dict[str, Type]:
+    @abstractmethod
+    def data_keys(self) -> List[str]:
+        """
+        A list of all keys that will be present in the dictionary returned
+        by get_data(). A consistent order is highly recommended.
+        """
         raise NotImplementedError
 
     @property
-    def data_keys(self) -> List[str]:
+    @abstractmethod
+    def data_types(self) -> Dict[str, Type]:
+        """A dictionary mapping each key to its corresponding Python type."""
         raise NotImplementedError
 
 class TelnetDevice(DataDevice):
