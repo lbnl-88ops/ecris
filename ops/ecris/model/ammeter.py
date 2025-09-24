@@ -46,7 +46,3 @@ class Ammeter(TelnetDevice):
     @property
     def data_types(self) -> Dict[str, Type]:
         return {"time": float, "current": float}
-
-    @property
-    def data_keys(self) -> List[str]:
-        return ["time", "current"]

@@ -21,13 +21,12 @@ class DataDevice(ABC):
         pass
 
     @property
-    @abstractmethod
     def data_keys(self) -> List[str]:
         """
         A list of all keys that will be present in the dictionary returned
         by get_data(). A consistent order is highly recommended.
         """
-        raise NotImplementedError
+        return list(self.data_types.keys())
 
     @property
     @abstractmethod
