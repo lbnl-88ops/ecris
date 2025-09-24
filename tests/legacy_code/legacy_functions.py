@@ -1,11 +1,18 @@
 import time
 import numpy as np
 
+class Telnet:
+    def __init__(ip, port, timeout):
+        pass
+    def read_until(self, data):
+        pass
+
 class VenusDummy:
     def write(self, data):
         print(f'VENUS WRITE: {data}')
 
 venus = VenusDummy()
+measurementFrequency = 0
 
 def sendCommand(connection,command):
     connection.write((command+'\n').encode('ascii'))
@@ -32,3 +39,33 @@ def legacy_current_measurement(connection):
         venus.write({'fcv1_ammeter_stdev':-2.})
     else:
         venus.write({'fcv1_ammeter_stdev':istd/iave*100.})
+
+def setupSystem(verbose=0):
+    IP = "10.10.100.75"
+    port = 5024
+
+    # Connect to Ammeter
+    if verbose:   print('attempt to connect...')
+    connection = Telnet(IP,port,timeout = 3)
+    output = connection.read_until(b'\n')
+    if verbose:   print('connected.  Output: ',output,'\nResetting system')
+    
+    # Reset System
+    sendCommand(connection,"*rst")
+    if verbose:   print('reset')
+    time.sleep(2)
+    if verbose:   print('waited 2 seconds, setting up current reading')
+
+    # Setting up reading settings
+    sendCommand(connection,':sens:func "curr"')
+    sendCommand(connection,':sens:curr:rang:auto on')
+    sendCommand(connection,':sens:curr:nplc:auto off')
+
+    # Set integration time in terms of wall frequency: MeasTime*^60Hz
+    nplc = 1./measurementFrequency*60.0   
+    sendCommand(connection,':sens:curr:nplc '+str(nplc))   
+
+    # turn on input switch
+    sendCommand(connection,':inp on')
+
+    return connection
