@@ -1,7 +1,8 @@
 # Characterization tests for legacy/current code
-import pytest
-
 from unittest.mock import patch, MagicMock, AsyncMock
+
+import numpy as np
+import pytest
 
 from ops.ecris.measure_current import time_average_current
 from .legacy_code.legacy_functions import legacy_current_measurement, getCurrent
@@ -36,7 +37,9 @@ def test_legacy_code_produces_correct_average(current_bytes, timestamps):
         legacy_current_measurement(mock_connection)
 
     expected_average = 1.5e-5
-    mock_venus.write.assert_called_once_with({'fcv1_ammeter': expected_average})
+    expected_stdev = 27.216552697590874
+    mock_venus.write.assert_called_with([{'fcv1_ammeter': expected_average}, 
+                                         {'fcv1_ammeter_stdev': expected_stdev}])
 
     assert mock_connection.read_until.call_count == 3
 
@@ -49,7 +52,8 @@ async def test_time_average_current(current_readings, timestamps):
     
     with patch(MODULE + 'time') as mock_time:
         mock_time.time.side_effect = timestamps
-        average = await time_average_current(mock_ammeter, 0.33)
+        average, std = await time_average_current(mock_ammeter, 0.33)
 
     assert average == 1.5e-5
+    assert std == pytest.approx(27.21655)
 

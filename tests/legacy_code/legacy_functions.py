@@ -28,3 +28,7 @@ def legacy_current_measurement(connection):
     isq = isq/(nmeas)
     istd = np.sqrt( isq - iave*iave )
     venus.write({'fcv1_ammeter':iave})
+    if iave==0:
+        venus.write({'fcv1_ammeter_stdev':-2.})
+    else:
+        venus.write({'fcv1_ammeter_stdev':istd/iave*100.})
