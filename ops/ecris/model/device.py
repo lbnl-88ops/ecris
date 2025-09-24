@@ -113,8 +113,8 @@ class TelnetDevice(DataDevice):
     async def _write(self, command: str):
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot write.")
-        
-        self._writer.write(command + '\r\n')
+        encoded_command = (command + '\n').encode('ascii') 
+        self._writer.write(encoded_command)
         await self._writer.drain()
 
     async def _read_until(self, separator: bytes = b'\n') -> str:
