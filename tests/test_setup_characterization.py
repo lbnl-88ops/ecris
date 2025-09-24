@@ -11,6 +11,13 @@ class TestSetup:
     PORT = 5024
     MEASUREMENT_FREQUENCY = 60.0 
     EXPECTED_NPLC = 1.0 / MEASUREMENT_FREQUENCY * 60.0
+    EXPECTED_COMMANDS = [
+            '*rst', 
+            ':sens:func "curr"', 
+            ':sens:curr:rang:auto on', 
+            ':sens:curr:nplc:auto off', 
+            f':sens:curr:nplc {EXPECTED_NPLC}', 
+            ':inp on']
 
     def test_legacy_setup_sends_correct_command_sequence(self):
         mock_connection = MagicMock()
@@ -28,16 +35,9 @@ class TestSetup:
         mock_sleep.assert_called_once_with(2)
         assert returned_connection is mock_connection
 
-        expected_command_calls = [
-            call.write(b'*rst\n'),
-            call.write(b':sens:func "curr"\n'),
-            call.write(b':sens:curr:rang:auto on\n'),
-            call.write(b':sens:curr:nplc:auto off\n'),
-            call.write(f':sens:curr:nplc {self.EXPECTED_NPLC}\n'.encode('ascii')),
-            call.write(b':inp on\n'),
-        ]
+        expected_command_calls = [call(f"{c}\n".encode('ascii')) for c in self.EXPECTED_COMMANDS]
 
-        mock_connection.assert_has_calls(expected_command_calls)
+        mock_connection.write.assert_has_calls(expected_command_calls)
 
     @pytest.mark.asyncio
     async def test_new_ammeter_setup_matches_legacy_behavior(self):
@@ -49,13 +49,6 @@ class TestSetup:
 
         mock_sleep.assert_called_once_with(2)
         
-        expected_command_calls = [
-            call('*rst'),
-            call(':sens:func "curr"'),
-            call(':sens:curr:rang:auto on'),
-            call(':sens:curr:nplc:auto off'),
-            call(f':sens:curr:nplc {self.EXPECTED_NPLC}'),
-            call(':inp on'),
-        ]
+        expected_command_calls = [call(c) for c in self.EXPECTED_COMMANDS]
         
         ammeter._write.assert_has_calls(expected_command_calls)
