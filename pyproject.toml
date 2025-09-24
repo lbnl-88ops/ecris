@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools >= 77.0.3", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ops.ecris"
+description = "Data collection and general tools for various ECRIS projects."
+requires-python = ">=3.9"
+authors = [
+    {name = "Jessica Rehak", email = "rehak@lbl.gov"}
+]
+dynamic = ["version"]
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "pandas",
+    "telnetlib3"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.setuptools.packages.find]
+where = [""]          
+include = ["ops.ecris*"]
+exclude = ["tests*"]    
+
+[tool.setuptools.dynamic]
+version = {attr = "ops.ecris.__version__"}
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+]
