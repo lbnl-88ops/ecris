@@ -23,5 +23,6 @@ async def time_average_current(ammeter: Ammeter,
 
 async def update_plc_average_current(ammeter: Ammeter, venus_plc: VenusPLC, 
                                      average_seconds: float = 0.33) -> None:
-    average, _ = await time_average_current(ammeter, average_seconds)
+    average, stdev = await time_average_current(ammeter, average_seconds)
     await venus_plc.write_data(VenusPLC.DataKeys.AVERAGE_CURRENT, average)
+    await venus_plc.write_data(VenusPLC.DataKeys.CURRENT_STDEV, stdev)

@@ -18,6 +18,8 @@ class VENUSController:
 class VenusPLC(Device):
     class DataKeys(Enum):
         AVERAGE_CURRENT = auto()
+        CURRENT_STDEV = auto()
+        
 
     def __init__(self, venus_controller: VENUSController):
         self._sync_venus = venus_controller
@@ -25,10 +27,13 @@ class VenusPLC(Device):
     async def write_data(self, data_key: Any, value: float) -> None:
         match data_key:
             case VenusPLC.DataKeys.AVERAGE_CURRENT:
-                await asyncio.to_thread(
-                    self._sync_venus.write, {'fcv1_ammeter': value})
-                return
-        raise KeyError(f'Write operation for data_key {data_key.name} not implemented.')
+                key = 'fcv1_ammeter'
+            case VenusPLC.DataKeys.CURRENT_STDEV:
+                key = 'fcv1_ammeter_stdev'
+            case _:
+                raise KeyError(f'Write operation for data_key {data_key.name} not implemented.')
+        await asyncio.to_thread(self._sync_venus.write, {key: value})
+        return
 
     async def get_data(self, data_key: DataKeys) -> float:
         raise KeyError(f'Read operation for data_key {data_key.name} not implemented.')

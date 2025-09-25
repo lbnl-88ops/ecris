@@ -68,6 +68,7 @@ class TestAverage:
             await update_plc_average_current(mock_ammeter, mock_venus_plc, 0.33)
             expected_calls = [
                 call(VenusPLC.DataKeys.AVERAGE_CURRENT, self.EXPECTED_AVERAGE),
+                call(VenusPLC.DataKeys.CURRENT_STDEV, self.EXPECTED_REL_STDEV),
             ]
             assert mock_venus_plc.write_data.await_args_list == expected_calls
 
