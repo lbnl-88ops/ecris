@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+from enum import StrEnum
 import asyncio
 from logging import getLogger
-from typing import Dict, List, Type
+from typing import Dict, List, Type, Any
 from ipaddress import IPv6Address, ip_address, IPv4Address
 from telnetlib3 import open_connection, TelnetReader, TelnetWriter
 
@@ -9,30 +10,25 @@ _log = getLogger(__name__)
 
 class Device(ABC):
     """
-    An abstract base class for any device that produces a dictionary of data.
+    An abstract base class for a controllable device.
     """
-
     @abstractmethod
-    async def get_data(self) -> Dict:
+    async def get_data(self, data_key: Any) -> float:
         """
-        Fetches a single data point from the device. The keys in the returned
-        dictionary must match the list provided by the `data_keys` property.
+        Fetches a single data point from the device.
+        Raises:
+            KeyError: If the data_key is not supported for reading.
         """
         pass
 
-    @property
-    def data_keys(self) -> List[str]:
-        """
-        A list of all keys that will be present in the dictionary returned
-        by get_data(). A consistent order is highly recommended.
-        """
-        return list(self.data_types.keys())
-
-    @property
     @abstractmethod
-    def data_types(self) -> Dict[str, Type]:
-        """A dictionary mapping each key to its corresponding Python type."""
-        raise NotImplementedError
+    async def write_data(self, data_key: Any, value: float) -> None:
+        """
+        Writes a single data value to the device.
+        Raises:
+            KeyError: If the data_key is not supported for writing.
+        """
+        pass
 
 class TelnetDevice(Device):
     def __init__(self, ip: str | None = None, port: int | None = None,

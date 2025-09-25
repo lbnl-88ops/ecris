@@ -1,13 +1,17 @@
 import asyncio
 from logging import getLogger
-from typing import Dict, Type, List
-import time
+from typing import Set
+from enum import Enum, auto
 
-from .device import TelnetDevice
+from .device import TelnetDevice, Device
 
 _log = getLogger(__name__)
 
-class Ammeter(TelnetDevice):
+class Ammeter(TelnetDevice, Device):
+    class DataKeys(Enum):
+        """Defines the valid data keys for the Ammeter."""
+        CURRENT = auto()
+        NPLC_SETTING = auto()
     def __init__(self, read_frequency_per_min: float,
                  ip: str | None = None, 
                  port: int | None = None,
@@ -19,14 +23,32 @@ class Ammeter(TelnetDevice):
 
         self.nplc_setting = 1 / read_frequency_per_min * 60.0
 
-    async def get_data(self) -> Dict:
-        await self._write('meas:curr?')
-        response = await self._read_until()
-        current = float(response)
-        return {
-            "time": time.time(),
-            "current": current,
-        }
+    @property
+    def readable_keys(self) -> Set[DataKeys]:
+        """Returns the set of keys that can be read from the device."""
+        return {Ammeter.DataKeys.CURRENT}
+
+    @property
+    def writable_keys(self) -> Set[DataKeys]:
+        """Returns the set of keys that can be written to the device."""
+        return {Ammeter.DataKeys.NPLC_SETTING}
+
+    async def get_data(self, data_key: DataKeys) -> float:
+        match data_key:
+            case Ammeter.DataKeys.CURRENT:
+                await self._write('meas:curr?')
+                response = await self._read_until()
+                return float(response)
+        
+        raise KeyError(f'Read operation for data_key {data_key.name} not implemented.')
+
+    async def write_data(self, data_key: DataKeys, value: float) -> None:
+        match data_key:
+            case Ammeter.DataKeys.NPLC_SETTING:
+                await self._write(f':sens:curr:nplc {value}')
+                return 
+        
+        raise KeyError(f'Write operation for data_key {data_key.name} not implemented.')
 
     async def setup(self) -> None:
         await self.reset()
@@ -44,7 +66,3 @@ class Ammeter(TelnetDevice):
         _log.info(f'Resetting Ammeter at {self._host}...')
         await self._write("*rst")
         _log.info('Ammeter reset.')
-
-    @property
-    def data_types(self) -> Dict[str, Type]:
-        return {"time": float, "current": float}

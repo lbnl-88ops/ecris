@@ -47,22 +47,17 @@ async def test_setup_sends_correct_commands(mock_ammeter_connection):
 @pytest.mark.asyncio
 async def test_get_data_sends_command_and_parses_response(mock_ammeter_connection):
     ammeter, mock_reader, mock_writer, _ = mock_ammeter_connection
-    current_time = time.time() 
     mock_reader.readuntil.return_value = b'B2900A>      1.2345E-05\r\n'
 
     await ammeter.connect()
     mock_reader.reset_mock()
     mock_writer.reset_mock()
 
-    with patch('time.time', return_value=current_time):
-        data = await ammeter.get_data()
+    data = await ammeter.get_data(Ammeter.DataKeys.CURRENT)
 
     mock_reader.readuntil.assert_awaited_once_with('\n'.encode('ascii'))
     mock_writer.write.assert_called_once_with("meas:curr?\n".encode('ascii'))
     mock_writer.drain.assert_awaited_once()
 
-    expected_data = {
-        "time": current_time,
-        "current": 1.2345e-05
-    }
+    expected_data = 1.2345e-05
     assert data == expected_data

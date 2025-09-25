@@ -11,7 +11,7 @@ async def time_average_current(ammeter: Ammeter,
 
     while time.time() - time_start < average_seconds:
         data = await ammeter.get_data()
-        current_readings.append(data['current'])
+        current_readings.append(data)
     average = float(np.average(current_readings))
     if abs(average) < 1E-16:
         standard_deviation = -2

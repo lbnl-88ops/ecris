@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ops.ecris"
 description = "Data collection and general tools for various ECRIS projects."
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     {name = "Jessica Rehak", email = "rehak@lbl.gov"}
 ]

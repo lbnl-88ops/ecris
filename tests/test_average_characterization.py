@@ -5,6 +5,7 @@ import pytest
 from pytest import approx
 
 from ops.ecris.measure_current import time_average_current
+from ops.ecris.model.ammeter import Ammeter
 from .legacy_code.legacy_functions import legacy_current_measurement
 
 LEGACY_MODULE = 'tests.legacy_code.legacy_functions.'
@@ -42,9 +43,7 @@ class TestAverage:
     @pytest.mark.asyncio
     async def test_time_average_current(self):
         mock_ammeter = AsyncMock()
-        mock_ammeter.get_data.side_effect =[
-            {'time': t, 'current': c} for t, c in zip(self.TIMESTAMPS, self.CURRENT_READINGS)
-        ]
+        mock_ammeter.get_data.side_effect = self.CURRENT_READINGS
         
         with patch(MODULE + 'time') as mock_time:
             mock_time.time.side_effect = self.TIMESTAMPS
