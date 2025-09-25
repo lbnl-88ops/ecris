@@ -25,7 +25,8 @@ class VenusPLC(Device):
     async def write_data(self, data_key: Any, value: float) -> None:
         match data_key:
             case VenusPLC.DataKeys.AVERAGE_CURRENT:
-                self._sync_venus.write({'fcv1_ammeter': value})
+                await asyncio.to_thread(
+                    self._sync_venus.write, {'fcv1_ammeter': value})
                 return
         raise KeyError(f'Write operation for data_key {data_key.name} not implemented.')
 

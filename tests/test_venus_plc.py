@@ -11,9 +11,10 @@ async def test_venus_sends_correct_current():
     mock_controller = MagicMock()
 
     plc = VenusPLC(mock_controller)
+    # Add await here, because write_data is now a proper coroutine
     await plc.write_data(VenusPLC.DataKeys.AVERAGE_CURRENT, 
-                            expected_current)
+                         expected_current)
+    
     mock_controller.write.assert_called_once_with(
         {'fcv1_ammeter': expected_current}
-        )
-
+    )
