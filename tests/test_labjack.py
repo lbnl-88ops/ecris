@@ -1,4 +1,5 @@
 import pytest
+from pytest import approx
 from unittest.mock import patch
 
 from ops.ecris.devices.labjack import LabJack
@@ -17,6 +18,13 @@ async def test_labjback_connect_sends_correct_command(labjack):
         await labjack.connect()
         mock_ljm.openS.assert_called_once_with("T8", "usb", "ANY")
         assert labjack._handle == handle
-        
 
-
+@pytest.mark.asyncio
+async def test_labjack_get_b_field_sends_correct_request(labjack):
+    labjack._handle = 5
+    with patch(MODULE + 'ljm') as mock_ljm:
+        expected_b_field = 1.2
+        mock_ljm.eReadName.return_value = expected_b_field
+        b_field = await labjack.get_data(LabJack.DataKeys.B_FIELD)
+        mock_ljm.eReadName.assert_called_once_with(labjack._handle, "AIN0")
+        assert b_field == approx(0.48)
