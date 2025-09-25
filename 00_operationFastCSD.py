@@ -186,10 +186,49 @@ def performFastCSD():
         f.write(f'{formatted_time} CSD time = {time.time()-tallstart:.1f}\n')
     print(f'{formatted_time} CSD time = {time.time()-tallstart:.1f}')
 
+def maximizeCurrent():
+    # parameters to set
+    dt_collect = 0.25           # how long to average beam current
+    dt_wait = 0.3               # how long to wait after changing Batman current
+    fractionofmax = [0.9, 0.95] # fraction of maximum to know you are past one side
+    dbatman = 0.007             # step size for batman
+    stepsize = 8                # number of dbatman steps to make in initial search for peak
+
+    steplast = 0
+    for j in range(2):
+        magnetsteps = []
+        meancurrent = []
+        maxcurrent = 0.0
+        ibatmanstart = venus.read(['batman_i_set'])/131.0
+
+        newmean, newstd = getmeancurrent(dt_collect)
+        meancurrent.append(newmean)
+        magnetsteps.append(0)
+        maxcurrent = newmean
+
+        if j == 1:
+            stepsize = 1
+            steplast = 0
+        for i in range(2):
+            dstep = stepsize * (-1)**i
+            while newmean >= fractionofmax[j] * maxcurrent:
+                steplast = steplast + dstep
+                setBatman(ibatmanstart+steplast*dbatman)    #VENUS minimum step sizes are 0.007 A
+                time.sleep(dt_wait)
+                newmean, newstd = getmeancurrent(dt_collect)
+                meancurrent.append(newmean)
+                magnetsteps.append(steplast)
+                maxcurrent = max(meancurrent)
+
+            measuredmax = max(meancurrent)
+            maxindex = meancurrent.index(measuredmax)
+            steplast = magnetsteps[maxindex]
+            setBatman(ibatmanstart+steplast*dbatman)
+            venus.write({'batman_i':ibatmanstart+steplast*dbatman})
+            newmean = maxcurrent # artificially set this as it should be close to correct
 
 #reset just in case
 venus.write({'csd_in_progress':0})
-
 
 again = 1
 ibatmanlast = venus.read(['batman_i'])
@@ -225,6 +264,7 @@ while again:
         venus.write({'fcv1_ammeter_stdev':istd/iave*100.})
 
     if venus.read(['csd_request']):
+        print(f'before CSD: ibatmanlast: {ibatmanlast:.5f}, ibatmanrequest = {ibatmanrequest:.5f}')
         venus.write({'csd_in_progress':1})
         venus.write({'fcv1_ammeter':0})
         venus.write({'fcv1_ammeter_stdev':0.})
@@ -233,6 +273,18 @@ while again:
         doCSD = 0
         tlastave = time.time()
         ibatmanrequest = venus.read(['batman_i_set'])/131.0   # new V3
+        ibatmanlast = ibatmanrequest # new: setting equal after return so code doesn't make change after peaking
+        print(f'after CSD:  ibatmanlast: {ibatmanlast:.5f}, ibatmanrequest = {ibatmanrequest:.5f}')
+
+    if 0: # going to change to if venus.read(['peaking_request']):
+        ibatmanprerequest = venus.read(['batman_i_set'])/131.0   # new V3
+        tpeaking = time.time()
+        maximizeCurrent()
+        tlastave = time.time()
+        ibatmanrequest = venus.read(['batman_i_set'])/131.0   # new V3
+        ibatmanlast = ibatmanrequest
+        #print(f'peaking time: {time.time()-tpeaking:.3f}s. batman change: {ibatmanlast-ibatmanprerequest:.4f}A')
+
     if time.time()-treadagain >= 5:
         with open('again','r') as f:
             again = int(f.readline())
@@ -242,4 +294,3 @@ while again:
 ###  done with CSD functions
 connection.close()   # close connnection to Ammeter
 ljm.close(handle)    # close connection to labjack
-
