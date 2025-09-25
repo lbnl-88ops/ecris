@@ -28,3 +28,12 @@ async def test_labjack_get_b_field_sends_correct_request(labjack):
         b_field = await labjack.read_data(LabJack.DataKeys.B_FIELD)
         mock_ljm.eReadName.assert_called_once_with(labjack._handle, "AIN0")
         assert b_field == approx(0.48)
+
+@pytest.mark.asyncio
+async def test_labjack_set_batman_current_sends_correct_request(labjack):
+    labjack._handle = 5
+    with patch(MODULE + 'ljm') as mock_ljm:
+        current_to_send = 0.12
+        await labjack.write_data(LabJack.DataKeys.BATMAN_CURRENT, current_to_send)
+        mock_ljm.eWriteName.assert_called_once_with(labjack._handle, "DAC0",
+                                                    current_to_send*LabJack.BATMAN_CURRENT_FACTOR)

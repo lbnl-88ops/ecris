@@ -11,9 +11,11 @@ _log = getLogger(__name__)
 
 class LabJack(Device):
     HALL_PROBE_CALIBRATION = 0.4
+    BATMAN_CURRENT_FACTOR = 0.04
 
     class DataKeys(Enum):
         B_FIELD = auto()
+        BATMAN_CURRENT = auto()
 
     def __init__(self) -> None:
         self._connection_lock = asyncio.Lock()
@@ -47,10 +49,21 @@ class LabJack(Device):
             self._handle = None
             _log.info("LabJack disconnected.")
 
-    async def write_data(self, data_key: Any, value: float) -> None:
-        pass
+    async def write_data(self, data_key: DataKeys, value: float) -> None:
+        if not self.is_connected:
+            raise ConnectionError('Cannot write, LabJack not connected.')
+        match (data_key):
+            case LabJack.DataKeys.BATMAN_CURRENT:
+                await asyncio.to_thread(ljm.eWriteName, self._handle, "DAC0", 
+                                        value*LabJack.BATMAN_CURRENT_FACTOR)
+            case _:
+                raise KeyError(f'Write operation for data_Key {data_key.name} not implemented')
+        return
+
 
     async def read_data(self, data_key: DataKeys) -> float:
+        if not self.is_connected:
+            raise ConnectionError('Cannot read, LabJack not connected.')
         match(data_key):
             case LabJack.DataKeys.B_FIELD:
                 b_value = await asyncio.to_thread(ljm.eReadName, self._handle, "AIN0")
