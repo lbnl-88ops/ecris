@@ -50,7 +50,7 @@ class LabJack(Device):
     async def write_data(self, data_key: Any, value: float) -> None:
         pass
 
-    async def get_data(self, data_key: DataKeys) -> float:
+    async def read_data(self, data_key: DataKeys) -> float:
         match(data_key):
             case LabJack.DataKeys.B_FIELD:
                 b_value = await asyncio.to_thread(ljm.eReadName, self._handle, "AIN0")

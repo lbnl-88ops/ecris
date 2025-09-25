@@ -33,7 +33,7 @@ class Ammeter(TelnetDevice, Device):
         """Returns the set of keys that can be written to the device."""
         return {Ammeter.DataKeys.NPLC_SETTING}
 
-    async def get_data(self, data_key: DataKeys) -> float:
+    async def read_data(self, data_key: DataKeys) -> float:
         match data_key:
             case Ammeter.DataKeys.CURRENT:
                 await self._write('meas:curr?')

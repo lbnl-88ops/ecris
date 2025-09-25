@@ -13,7 +13,7 @@ class Device(ABC):
     An abstract base class for a controllable device.
     """
     @abstractmethod
-    async def get_data(self, data_key: Any) -> float:
+    async def read_data(self, data_key: Any) -> float:
         """
         Fetches a single data point from the device.
         Raises:

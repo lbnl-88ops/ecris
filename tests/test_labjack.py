@@ -25,6 +25,6 @@ async def test_labjack_get_b_field_sends_correct_request(labjack):
     with patch(MODULE + 'ljm') as mock_ljm:
         expected_b_field = 1.2
         mock_ljm.eReadName.return_value = expected_b_field
-        b_field = await labjack.get_data(LabJack.DataKeys.B_FIELD)
+        b_field = await labjack.read_data(LabJack.DataKeys.B_FIELD)
         mock_ljm.eReadName.assert_called_once_with(labjack._handle, "AIN0")
         assert b_field == approx(0.48)

@@ -44,21 +44,21 @@ class TestAverage:
     @pytest.mark.asyncio
     async def test_time_average_current(self):
         mock_ammeter = AsyncMock()
-        mock_ammeter.get_data.side_effect = self.CURRENT_READINGS
+        mock_ammeter.read_data.side_effect = self.CURRENT_READINGS
         
         with patch(MODULE + 'time') as mock_time:
             mock_time.time.side_effect = self.TIMESTAMPS
             average, std = await time_average_current(mock_ammeter, 0.33)
         expected_calls = [call(Ammeter.DataKeys.CURRENT) for _ in self.CURRENT_READINGS]
 
-        assert mock_ammeter.get_data.await_args_list == expected_calls
+        assert mock_ammeter.read_data.await_args_list == expected_calls
         assert average == self.EXPECTED_AVERAGE
         assert std == self.EXPECTED_REL_STDEV
 
     @pytest.mark.asyncio
     async def test_time_average_current_update(self):
         mock_ammeter = AsyncMock()
-        mock_ammeter.get_data.side_effect = self.CURRENT_READINGS
+        mock_ammeter.read_data.side_effect = self.CURRENT_READINGS
         mock_venus_plc = AsyncMock()
         
         with patch(MODULE + 'time') as mock_time:
@@ -72,7 +72,7 @@ class TestAverage:
             assert mock_venus_plc.write_data.await_args_list == expected_calls
 
         expected_calls = [call(Ammeter.DataKeys.CURRENT) for _ in self.CURRENT_READINGS]
-        assert mock_ammeter.get_data.await_args_list == expected_calls
+        assert mock_ammeter.read_data.await_args_list == expected_calls
 
 class TestZeroAverage(TestAverage):
     EXPECTED_AVERAGE = 0

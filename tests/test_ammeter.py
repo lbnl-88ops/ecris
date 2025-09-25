@@ -44,7 +44,7 @@ async def test_setup_sends_correct_commands(mock_ammeter_connection):
     assert mock_writer.write.call_count == 6
 
 @pytest.mark.asyncio
-async def test_get_data_sends_command_and_parses_response(mock_ammeter_connection):
+async def test_read_data_sends_command_and_parses_response(mock_ammeter_connection):
     ammeter, mock_reader, mock_writer, _ = mock_ammeter_connection
     mock_reader.readuntil.return_value = b'B2900A>      1.2345E-05\r\n'
 
@@ -52,7 +52,7 @@ async def test_get_data_sends_command_and_parses_response(mock_ammeter_connectio
     mock_reader.reset_mock()
     mock_writer.reset_mock()
 
-    data = await ammeter.get_data(Ammeter.DataKeys.CURRENT)
+    data = await ammeter.read_data(Ammeter.DataKeys.CURRENT)
 
     mock_reader.readuntil.assert_awaited_once_with('\n'.encode('ascii'))
     mock_writer.write.assert_called_once_with("meas:curr?\n".encode('ascii'))

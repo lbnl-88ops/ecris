@@ -10,7 +10,7 @@ async def time_average_current(ammeter: Ammeter,
     current_readings = []
 
     while time.time() - time_start < average_seconds:
-        data = await ammeter.get_data(Ammeter.DataKeys.CURRENT)
+        data = await ammeter.read_data(Ammeter.DataKeys.CURRENT)
         current_readings.append(data)
     average = float(np.average(current_readings))
     if abs(average) < 1E-16:

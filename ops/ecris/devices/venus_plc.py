@@ -35,6 +35,6 @@ class VenusPLC(Device):
         await asyncio.to_thread(self._sync_venus.write, {key: value})
         return
 
-    async def get_data(self, data_key: DataKeys) -> float:
+    async def read_data(self, data_key: DataKeys) -> float:
         raise KeyError(f'Read operation for data_key {data_key.name} not implemented.')
     
