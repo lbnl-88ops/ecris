@@ -14,7 +14,8 @@ dependencies = [
     "numpy",
     "matplotlib",
     "pandas",
-    "telnetlib3"
+    "telnetlib3",
+    "labjack-ljm",
 ]
 
 [project.optional-dependencies]
