@@ -4,12 +4,14 @@ from unittest.mock import patch, MagicMock, AsyncMock, call
 import pytest
 from pytest import approx
 
-from ops.ecris.measure_current import time_average_current
+from ops.ecris.measure_current import time_average_current, update_plc_average_current
 from ops.ecris.model.ammeter import Ammeter
+from ops.ecris.devices.venus_plc import VenusPLC
 from .legacy_code.legacy_functions import legacy_current_measurement
 
 LEGACY_MODULE = 'tests.legacy_code.legacy_functions.'
 MODULE = 'ops.ecris.measure_current.'
+VENUS_MODULE = 'ops.ecris.devices.venus_plc.'
 
 def current_bytes(current_readings):
     return [
@@ -53,6 +55,24 @@ class TestAverage:
         assert mock_ammeter.get_data.await_args_list == expected_calls
         assert average == self.EXPECTED_AVERAGE
         assert std == self.EXPECTED_REL_STDEV
+
+    @pytest.mark.asyncio
+    async def test_time_average_current_update(self):
+        mock_ammeter = AsyncMock()
+        mock_ammeter.get_data.side_effect = self.CURRENT_READINGS
+        mock_venus_plc = AsyncMock()
+        
+        with patch(MODULE + 'time') as mock_time:
+            mock_time.time.side_effect = self.TIMESTAMPS
+
+            await update_plc_average_current(mock_ammeter, mock_venus_plc, 0.33)
+            expected_calls = [
+                call(VenusPLC.DataKeys.AVERAGE_CURRENT, self.EXPECTED_AVERAGE),
+            ]
+            assert mock_venus_plc.write_data.await_args_list == expected_calls
+
+        expected_calls = [call(Ammeter.DataKeys.CURRENT) for _ in self.CURRENT_READINGS]
+        assert mock_ammeter.get_data.await_args_list == expected_calls
 
 class TestZeroAverage(TestAverage):
     EXPECTED_AVERAGE = 0

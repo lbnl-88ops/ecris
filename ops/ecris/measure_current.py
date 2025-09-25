@@ -3,6 +3,7 @@ import numpy as np
 from typing import Tuple
 
 from ops.ecris.model import Ammeter
+from ops.ecris.devices.venus_plc import VenusPLC
 
 async def time_average_current(ammeter: Ammeter,
                                average_seconds: float) -> Tuple[float, float]:
@@ -19,3 +20,8 @@ async def time_average_current(ammeter: Ammeter,
         standard_deviation = float(np.std(current_readings))/average * 100
     return average, standard_deviation
 
+
+async def update_plc_average_current(ammeter: Ammeter, venus_plc: VenusPLC, 
+                                     average_seconds: float = 0.33) -> None:
+    average, _ = await time_average_current(ammeter, average_seconds)
+    await venus_plc.write_data(VenusPLC.DataKeys.AVERAGE_CURRENT, average)
