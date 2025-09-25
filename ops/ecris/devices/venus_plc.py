@@ -19,7 +19,8 @@ class VenusPLC(Device):
     class DataKeys(Enum):
         AVERAGE_CURRENT = auto()
         CURRENT_STDEV = auto()
-        
+        BATMAN_CURRENT = auto()
+        EXTRACTION_VOLTAGE = auto()
 
     def __init__(self, venus_controller: VENUSController):
         self._sync_venus = venus_controller
