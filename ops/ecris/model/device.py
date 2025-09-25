@@ -7,7 +7,7 @@ from telnetlib3 import open_connection, TelnetReader, TelnetWriter
 
 _log = getLogger(__name__)
 
-class DataDevice(ABC):
+class Device(ABC):
     """
     An abstract base class for any device that produces a dictionary of data.
     """
@@ -34,7 +34,7 @@ class DataDevice(ABC):
         """A dictionary mapping each key to its corresponding Python type."""
         raise NotImplementedError
 
-class TelnetDevice(DataDevice):
+class TelnetDevice(Device):
     def __init__(self, ip: str | None = None, port: int | None = None,
                  prompt: str | None = None):
         self._ip: IPv4Address | IPv6Address | None = None
