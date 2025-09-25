@@ -5,8 +5,7 @@ import pytest
 from pytest import approx
 
 from ops.ecris.measure_current import time_average_current, update_plc_average_current
-from ops.ecris.model.ammeter import Ammeter
-from ops.ecris.devices.venus_plc import VenusPLC
+from ops.ecris.devices import Ammeter, VenusPLC
 from .legacy_code.legacy_functions import legacy_current_measurement
 
 LEGACY_MODULE = 'tests.legacy_code.legacy_functions.'

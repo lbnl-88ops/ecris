@@ -2,9 +2,8 @@
 
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock, call
-import time
 
-from ops.ecris.model.ammeter import Ammeter
+from ops.ecris.devices.ammeter import Ammeter
 
 @pytest.fixture
 def mock_ammeter_connection():

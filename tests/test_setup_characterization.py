@@ -2,7 +2,7 @@ from unittest.mock import patch, MagicMock, call, AsyncMock
 import pytest
 
 from .legacy_code import legacy_functions
-from ops.ecris.model import Ammeter
+from ops.ecris.devices import Ammeter
 
 LEGACY_SETUP_MODULE = 'tests.legacy_code.legacy_functions'
 

@@ -2,8 +2,7 @@ import time
 import numpy as np
 from typing import Tuple
 
-from ops.ecris.model import Ammeter
-from ops.ecris.devices.venus_plc import VenusPLC
+from ops.ecris.devices import VenusPLC, Ammeter
 
 async def time_average_current(ammeter: Ammeter,
                                average_seconds: float) -> Tuple[float, float]:
