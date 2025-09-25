@@ -94,17 +94,20 @@ def datasheet(tst_str):
         for i in range(len(readvars)):  
             f.write("%4i %.5e %s\n"%(i,venus.read([readvars[i]]),readvars[i]))
 
-def get_csd(Ilow,Ihigh,npoints):
-    #print(venus.read(['batman_i']), venus.read(['batman_i_set']))
-    #with open('temptemp','w') as f:
-    #    for i in range(5):
-    #        f.write(f"{-1+i*.01:7.4f} {venus.read(['batman_i']):10.3f} {getB()*1e5:10.3f} {1e6*getCurrent(connection):10.3f}\n")
-
+def get_csd(Ilow,Ihigh,npoints,wasin,tstarted):
     Vext = venus.read(['extraction_v'])
     Bstart = getB()
-    Istart = venus.read(['batman_i'])
+    Istart = venus.read(['batman_i_set'])/131.0   
     
-    changeslow(Ilow,twait=1)
+    changeslow(Istart,Ilow,twait=1)
+    if wasin == 0:
+        morewaittime = tstarted + 10. - time.time()
+        if morewaittime > 0:
+            if morewaittime>10:   # add this as a safety catch.  Shouldn't happen
+                print(f'morewaittime > 10!! {morewaittime:.2f}')
+                time.sleep(10)
+            else:
+                time.sleep(morewaittime)   
 
     batmanfield = np.zeros(npoints)
     faradaycup = np.zeros(npoints)
@@ -117,7 +120,9 @@ def get_csd(Ilow,Ihigh,npoints):
         batmanfield[i] = getB()
         timesteps[i] = time.time()
 
-    changeslow(Istart,twait=0)
+    if wasin == 0:
+        venus.write({'fcv1_in':False}) # Take Faraday cup back out if it was out before start
+    changeslow(ipoints[-1],Istart,twait=0)
     resetbatman(Bstart,Istart)
 
     # add search to peak beam here
@@ -137,11 +142,12 @@ def resetbatman(bgoal,Istart):
                 Inew = Inew - 0.007
             #f.write(f"{time.time()-tstart:7.4f} {Inew:10.3f} {bnow*1e5:10.3f} {1e6*getCurrent(connection):10.3f}\n")
             setBatman(Inew)
+    if 0:   # Use this to make final steps if determined necessary
+        Inew = Inew + 0.0
+        setBatman(Inew)
 
-
-def changeslow(iend,twait=1):
-    Inow = venus.read(['batman_i'])
-    ipts = np.linspace(Inow,iend,int(np.ceil(np.abs(Inow-iend)))*3)
+def changeslow(istart,iend,twait=1):
+    ipts = np.linspace(istart,iend,int(np.ceil(np.abs(istart-iend)))*3)
     for ipt in ipts:
         setBatman(ipt)
         iNow = getCurrent(connection)   # doing this to slow the process
@@ -158,6 +164,10 @@ def performFastCSD():
     # take a datasheet and a csd
     tallstart = time.time()
     tnowstr = str(int(time.time()))
+    wasin = 1
+    if not venus.read(['fcv1_in']):   # checking if faraday cup is in
+        venus.write({'fcv1_in':True}) # if not, put it in
+        wasin = 0                     # set wasin to zero.  Will have to wait ~10 s to start CSD
     datasheet(tnowstr)
 
     alpha = 0.00824    # calculated...need notes DST
@@ -166,9 +176,7 @@ def performFastCSD():
     Ilow = alpha/m*np.sqrt(0.84*Vext)
     Ihigh = alpha/m*np.sqrt(8.9*Vext)
     with open(directory+'/csd_'+tnowstr,'w') as outfile:
-        #timesteps, ipoints, batmanfield, faradaycup = get_csd(43,135,1200)          # 20
-        #timesteps, ipoints, batmanfield, faradaycup = get_csd(42.8,139,1200)           # 22
-        timesteps, ipoints, batmanfield, faradaycup = get_csd(Ilow,Ihigh,1200)           # 22
+        timesteps, ipoints, batmanfield, faradaycup = get_csd(Ilow,Ihigh,1200,wasin,tallstart)           
         for i in range(len(timesteps)):
             outfile.write("%.3f %.3f %.8f %.5e\n"%(timesteps[i],ipoints[i],batmanfield[i],faradaycup[i]))
     tnow = time.time()
@@ -184,7 +192,7 @@ venus.write({'csd_in_progress':0})
 
 
 again = 1
-ibatmanlast = 0.0
+ibatmanlast = venus.read(['batman_i'])
 doCSD = 0
 treadagain = time.time()
 tlastave = time.time()
@@ -201,7 +209,10 @@ while again:
         # check for batman requests
         ibatmanrequest = venus.read(['batman_i_set'])/131.0
         if ibatmanrequest != ibatmanlast:
-            setBatman(ibatmanrequest)
+            if ibatmanrequest > (ibatmanlast + 1) or ibatmanrequest < (ibatmanlast - 1):
+                changeslow(ibatmanlast,ibatmanrequest,twait=0)
+            else:
+                setBatman(ibatmanrequest)
             ibatmanlast = ibatmanrequest
     tlastave = time.time()
     iave = iave/(nmeas)
@@ -221,6 +232,7 @@ while again:
         venus.write({'csd_in_progress':0})
         doCSD = 0
         tlastave = time.time()
+        ibatmanrequest = venus.read(['batman_i_set'])/131.0   # new V3
     if time.time()-treadagain >= 5:
         with open('again','r') as f:
             again = int(f.readline())
