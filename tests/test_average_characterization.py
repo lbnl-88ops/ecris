@@ -48,7 +48,9 @@ class TestAverage:
         with patch(MODULE + 'time') as mock_time:
             mock_time.time.side_effect = self.TIMESTAMPS
             average, std = await time_average_current(mock_ammeter, 0.33)
+        expected_calls = [call(Ammeter.DataKeys.CURRENT) for _ in self.CURRENT_READINGS]
 
+        assert mock_ammeter.get_data.await_args_list == expected_calls
         assert average == self.EXPECTED_AVERAGE
         assert std == self.EXPECTED_REL_STDEV
 

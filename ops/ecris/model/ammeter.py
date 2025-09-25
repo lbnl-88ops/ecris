@@ -39,7 +39,6 @@ class Ammeter(TelnetDevice, Device):
                 await self._write('meas:curr?')
                 response = await self._read_until()
                 return float(response)
-        
         raise KeyError(f'Read operation for data_key {data_key.name} not implemented.')
 
     async def write_data(self, data_key: DataKeys, value: float) -> None:
