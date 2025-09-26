@@ -4,12 +4,12 @@ from unittest.mock import patch, MagicMock, AsyncMock, call
 import pytest
 from pytest import approx
 
-from ops.ecris.measure_current import time_average_current, update_plc_average_current
+from ops.ecris.operations.measure_current import time_average_current, update_plc_average_current
 from ops.ecris.devices import Ammeter, VenusPLC
 from .legacy_code.legacy_functions import legacy_current_measurement
 
 LEGACY_MODULE = 'tests.legacy_code.legacy_functions.'
-MODULE = 'ops.ecris.measure_current.'
+MODULE = 'ops.ecris.operations.measure_current.'
 VENUS_MODULE = 'ops.ecris.devices.venus_plc.'
 
 def current_bytes(current_readings):
