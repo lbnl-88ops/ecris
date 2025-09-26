@@ -3,12 +3,10 @@ from unittest.mock import MagicMock
 from ops.ecris.devices.venus_plc import VenusPLC
 
 @pytest.fixture
-def mock_controller() -> MagicMock:
-    return MagicMock()
-
-@pytest.fixture
-def plc(mock_controller: MagicMock) -> VenusPLC:
-    return VenusPLC(mock_controller)
+def venus_setup() -> tuple[VenusPLC, MagicMock]:
+    mock_controller = MagicMock()
+    plc = VenusPLC(mock_controller)
+    return plc, mock_controller
 
 class TestVenusWriteData:
     params = [
@@ -19,7 +17,8 @@ class TestVenusWriteData:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize('key, value, plc_key', params, ids=ids)
-    async def test_write_data(self, plc: VenusPLC, mock_controller: MagicMock, key, value, plc_key):
+    async def test_write_data(self, venus_setup, key, value, plc_key):
+        plc, mock_controller = venus_setup
         await plc.write_data(key, value)
         mock_controller.write.assert_called_once_with({plc_key: value})
 
@@ -32,7 +31,8 @@ class TestVenusReadData:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize('key, value, plc_key', params, ids=ids)
-    async def test_read_data(self, plc: VenusPLC, mock_controller: MagicMock, key, value, plc_key):
+    async def test_read_data(self, venus_setup, key, value, plc_key):
+        plc, mock_controller = venus_setup
         mock_controller.read.return_value = value
 
         return_value = await plc.read_data(key)
