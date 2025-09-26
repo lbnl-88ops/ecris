@@ -14,6 +14,8 @@ class VENUSController:
         print(f'Wrote to VENUS Controller: {data}')
     def read(self, data: List[str]) -> float:
         raise NotImplementedError('VENUSController is not an implemented class')
+    def readvars(self) -> List[str]:
+        raise NotImplementedError('VENUSController is not an implemented class')
 
 class VenusPLC(Device):
     class DataKeys(Enum):
