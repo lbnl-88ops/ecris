@@ -12,7 +12,7 @@ class VENUSController:
         pass
     def write(self, data: Dict[str, float]) -> None:
         print(f'Wrote to VENUS Controller: {data}')
-    def read(self, data: List[str]) -> float | Dict[str, float]:
+    def read(self, data: List[str]) -> float:
         raise NotImplementedError('VENUSController is not an implemented class')
 
 class VenusPLC(Device):
