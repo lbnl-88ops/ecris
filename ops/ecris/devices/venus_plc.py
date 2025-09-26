@@ -37,14 +37,13 @@ class VenusPLC(Device):
         return
 
     async def read_data(self, data_key: DataKeys) -> float:
-        factor: float = 1
         match data_key:
             case VenusPLC.DataKeys.EXTRACTION_VOLTAGE:
                 key = 'extraction_v'
+            case VenusPLC.DataKeys.BATMAN_CURRENT:
+                key = 'batman_i_set'
             case _:
                 raise KeyError(f'Read operation for data_key {data_key.name} not implemented.')
         value = await asyncio.to_thread(self._sync_venus.read, [key])
-        if isinstance(value, float):
-            return value * factor
         return value
     
