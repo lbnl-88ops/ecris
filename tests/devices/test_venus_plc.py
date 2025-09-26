@@ -1,44 +1,41 @@
 import pytest
-from unittest.mock import MagicMock, patch
-
+from unittest.mock import MagicMock
 from ops.ecris.devices.venus_plc import VenusPLC
 
-MODULE = 'ops.ecris.devices.venus_plc.'
+@pytest.fixture
+def mock_controller() -> MagicMock:
+    return MagicMock()
 
-class TestVenus:
-    mock_controller = MagicMock()
-    plc = VenusPLC(mock_controller)
+@pytest.fixture
+def plc(mock_controller: MagicMock) -> VenusPLC:
+    return VenusPLC(mock_controller)
 
-class TestVenusWriteData(TestVenus):
+class TestVenusWriteData:
     params = [
         (VenusPLC.DataKeys.AVERAGE_CURRENT, 1.56E-6, 'fcv1_ammeter'),
         (VenusPLC.DataKeys.CURRENT_STDEV, 3.67E-2, 'fcv1_ammeter_stdev')
     ]
-    ids = ['average current', 
-           'current_stdev']
+    ids = ['average current', 'current stdev']
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize('key, value, plc_key', params, ids=ids)
-    async def test_write_data(self, key, value, plc_key):
-        self.mock_controller.reset_mock()
-        await self.plc.write_data(key, value)
-        self.mock_controller.write.assert_called_once_with({plc_key: value})
-        
-class TestVenusReadData(TestVenus):
+    async def test_write_data(self, plc: VenusPLC, mock_controller: MagicMock, key, value, plc_key):
+        await plc.write_data(key, value)
+        mock_controller.write.assert_called_once_with({plc_key: value})
+
+class TestVenusReadData:
     params = [
         (VenusPLC.DataKeys.EXTRACTION_VOLTAGE, 123, 'extraction_v'),
         (VenusPLC.DataKeys.BATMAN_CURRENT, 3E-5, 'batman_i_set')
     ]
-    ids = ['extraction voltage', 
-           'BATMAN current' 
-           ]
+    ids = ['extraction voltage', 'BATMAN current']
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize('key, value, plc_key', params, ids=ids)
-    async def test_read_data(self, key, value, plc_key):
-        self.mock_controller.reset_mock()
-        self.mock_controller.read.return_value = value
-        return_value = await self.plc.read_data(key)
-        self.mock_controller.read.assert_called_once()
+    async def test_read_data(self, plc: VenusPLC, mock_controller: MagicMock, key, value, plc_key):
+        mock_controller.read.return_value = value
+
+        return_value = await plc.read_data(key)
+
+        mock_controller.read.assert_called_once_with([plc_key])
         assert return_value == value
-        
