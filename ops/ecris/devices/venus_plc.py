@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from enum import Enum, auto
 
 from ops.ecris.model.device import Device
@@ -14,7 +14,7 @@ class VENUSController:
         print(f'Wrote to VENUS Controller: {data}')
     def read(self, data: List[str]) -> float:
         raise NotImplementedError('VENUSController is not an implemented class')
-    def readvars(self) -> List[str]:
+    def read_vars(self) -> List[str]:
         raise NotImplementedError('VENUSController is not an implemented class')
 
 class VenusPLC(Device):
@@ -26,6 +26,14 @@ class VenusPLC(Device):
 
     def __init__(self, venus_controller: VENUSController):
         self._sync_venus = venus_controller
+    
+    async def get_all_data(self) -> Dict[int, Tuple[str, float]]:
+        data_values: Dict[int, Tuple[str, float]] = {}
+        all_data_keys = await asyncio.to_thread(self._sync_venus.read_vars)
+        for idx, data_key in enumerate(all_data_keys):
+            data_values[idx] = data_key, await asyncio.to_thread(
+                self._sync_venus.read, [data_key])
+        return data_values
 
     async def write_data(self, data_key: Any, value: float) -> None:
         match data_key:
