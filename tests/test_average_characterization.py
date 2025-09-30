@@ -51,11 +51,11 @@ class TestAverage:
         
         with patch(MODULE + 'time') as mock_time:
             mock_time.time.side_effect = self.TIMESTAMPS
-            result_dict = await asyncio.to_thread(time_average_current, loop, mock_ammeter, 0.33)
+            measurement = await asyncio.to_thread(time_average_current, loop, mock_ammeter, 0.33)
         expected_calls = [call(Ammeter.DataKeys.CURRENT) for _ in self.CURRENT_READINGS]
         assert mock_ammeter.read_data.await_args_list == expected_calls
-        assert result_dict['current_average'] == self.EXPECTED_AVERAGE
-        assert result_dict['current_stdev'] == self.EXPECTED_REL_STDEV
+        assert measurement.average == self.EXPECTED_AVERAGE
+        assert measurement.standard_deviation == self.EXPECTED_REL_STDEV
 
     # @pytest.mark.asyncio
     # async def test_time_average_current_update(self):

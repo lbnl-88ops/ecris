@@ -1,14 +1,16 @@
 import asyncio
 import time
-from typing import Callable, Dict
+from typing import Callable
 from logging import getLogger
 
 from .exceptions import ECRISDataFailure
+from ops.ecris.model.measurement import Measurement
 
 _log = getLogger(__name__)
 
-def producer_thread(loop, data_queue, 
-                    producer: Callable[[],Dict],
+def producer_thread(loop: asyncio.AbstractEventLoop, 
+                    data_queue: asyncio.Queue, 
+                    producer: Callable[[],Measurement],
                     poll_interval: float):
     _log.info("Producer thread started")
     while True:

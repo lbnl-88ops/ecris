@@ -15,13 +15,15 @@ class Ammeter(TelnetDevice, Device):
     def __init__(self, read_frequency_per_min: float,
                  ip: str | None = None, 
                  port: int | None = None,
-                 prompt: str = 'B2900A>'):
+                 prompt: str = 'B2900A>',
+                 id: str = 'KeySight B2900A'):
         super().__init__(ip, port, prompt)
         
         if not 1 <= read_frequency_per_min <= 2000:
             raise ValueError(f'Bad value of read frequency {read_frequency_per_min} (must be 1-2000)')
 
         self.nplc_setting = 1 / read_frequency_per_min * 60.0
+        self.id = id
 
     @property
     def readable_keys(self) -> Set[DataKeys]:
