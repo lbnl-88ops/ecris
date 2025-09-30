@@ -5,8 +5,9 @@ import asyncio
 import pytest
 from pytest import approx
 
+from ops.ecris.model.measurement import CurrentMeasurement
 from ops.ecris.operations.producers import time_average_current
-from ops.ecris.tasks.measure_current import update_plc_average_current
+from ops.ecris.tasks.device_broadcasters import update_plc_average_current
 from ops.ecris.devices import Ammeter, VenusPLC
 from .legacy_code.legacy_functions import legacy_current_measurement
 
@@ -57,26 +58,20 @@ class TestAverage:
         assert measurement.average == self.EXPECTED_AVERAGE
         assert measurement.standard_deviation == self.EXPECTED_REL_STDEV
 
-    # @pytest.mark.asyncio
-    # async def test_time_average_current_update(self):
-    #     mock_ammeter = AsyncMock()
-    #     mock_ammeter.read_data.side_effect = self.CURRENT_READINGS
-    #     mock_venus_plc = AsyncMock()
+    @pytest.mark.asyncio
+    async def test_time_average_current_update(self):
+        mock_venus_plc = AsyncMock()
+        measurement = CurrentMeasurement('ammeter', self.EXPECTED_AVERAGE, 
+                                         self.EXPECTED_REL_STDEV.expected)
         
-    #     with patch(MODULE + 'time') as mock_time:
-    #         mock_time.time.side_effect = self.TIMESTAMPS
-
-    #         await update_plc_average_current(mock_ammeter, mock_venus_plc, 0.33)
-    #         expected_calls = [
-    #             call(VenusPLC.DataKeys.AVERAGE_CURRENT, self.EXPECTED_AVERAGE),
-    #             call(VenusPLC.DataKeys.CURRENT_STDEV, self.EXPECTED_REL_STDEV),
-    #         ]
-    #         assert mock_venus_plc.write_data.await_args_list == expected_calls
-
-    #     expected_calls = [call(Ammeter.DataKeys.CURRENT) for _ in self.CURRENT_READINGS]
-    #     assert mock_ammeter.read_data.await_args_list == expected_calls
+        await update_plc_average_current(mock_venus_plc, measurement)
+        expected_calls = [
+            call(VenusPLC.DataKeys.AVERAGE_CURRENT, self.EXPECTED_AVERAGE),
+            call(VenusPLC.DataKeys.CURRENT_STDEV, self.EXPECTED_REL_STDEV),
+        ]
+        assert mock_venus_plc.write_data.await_args_list == expected_calls
 
 class TestZeroAverage(TestAverage):
     EXPECTED_AVERAGE = 0
-    EXPECTED_REL_STDEV = -2
+    EXPECTED_REL_STDEV = approx(-2, rel=0)
     CURRENT_READINGS = [-3.5, 1.5, 2.0]
