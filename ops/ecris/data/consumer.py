@@ -2,10 +2,10 @@ from logging import getLogger
 import asyncio
 from typing import Dict, Callable, Any, Awaitable, List
 
-_log = getLogger(__name__)
+from ops.ecris.model.measurement import Measurement
 
 async def consumer(data_queue, 
-                   data_broadcasters: List[Callable[[Dict], Awaitable[None]]]):
+                   data_broadcasters: List[Callable[[Measurement], Awaitable[None]]]):
     while True:
         data = await data_queue.get()
         tasks = [broadcaster(data) for broadcaster in data_broadcasters]

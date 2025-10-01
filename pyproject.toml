@@ -17,6 +17,7 @@ dependencies = [
     "telnetlib3",
     "labjack-ljm",
     "aiofiles",
+    "websockets",
 ]
 
 [project.optional-dependencies]

@@ -1,8 +1,10 @@
 import asyncio
+from logging import getLogger
 from typing import Any, Dict, List, Tuple
 from enum import Enum, auto
 
 from ops.ecris.model.device import Device
+_log = getLogger(__name__)
 
 #from venus_data_utils.venusplc as import VENUSController
 
@@ -11,7 +13,7 @@ class VENUSController:
     def __init__(self, read_only: bool):
         pass
     def write(self, data: Dict[str, float]) -> None:
-        print(f'Wrote to VENUS Controller: {data}')
+        _log.debug(f'Wrote to VENUS Controller: {data}')
     def read(self, data: List[str]) -> float:
         raise NotImplementedError('VENUSController is not an implemented class')
     def read_vars(self) -> List[str]:
