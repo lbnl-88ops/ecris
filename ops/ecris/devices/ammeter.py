@@ -51,8 +51,14 @@ class Ammeter(TelnetDevice, Device):
         
         raise KeyError(f'Write operation for data_key {data_key.name} not implemented.')
 
+    async def connect(self) -> None:
+        _log.info(f'Connecting Ammeter at {self._host}...')
+        await super().connect()
+        await self.setup()
+
     async def setup(self) -> None:
         await self.reset()
+        _log.info(f'Setting up Ammeter at {self._host}...')
         await asyncio.sleep(2)
         for command in [
             ':sens:func "curr"',

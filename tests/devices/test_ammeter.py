@@ -18,13 +18,13 @@ def mock_ammeter_connection():
         
         yield ammeter, mock_reader, mock_writer, mock_open_conn
 
-@pytest.mark.asyncio
-async def test_connect(mock_ammeter_connection):
-    ammeter, mock_reader, _, mock_open_conn = mock_ammeter_connection
-    mock_reader.readuntil.return_value = 'B2900A>\r\n'.encode('ascii')
-    await ammeter.connect()
-    mock_open_conn.assert_awaited_once_with('127.0.0.1', 9999, encoding=False)
-    mock_reader.readuntil.assert_awaited_once_with('\n'.encode('ascii'))
+# @pytest.mark.asyncio
+# async def test_connect(mock_ammeter_connection):
+#     ammeter, mock_reader, _, mock_open_conn = mock_ammeter_connection
+#     mock_reader.readuntil.return_value = 'B2900A>\r\n'.encode('ascii')
+#     await ammeter.connect()
+#     mock_open_conn.assert_awaited_once_with('127.0.0.1', 9999, encoding=False)
+#     mock_reader.readuntil.assert_awaited_once_with('\n'.encode('ascii'))
 
 @pytest.mark.asyncio
 async def test_setup_sends_correct_commands(mock_ammeter_connection):
@@ -32,9 +32,8 @@ async def test_setup_sends_correct_commands(mock_ammeter_connection):
     expected_nplc = 1.0
     mock_reader.readuntil.return_value = b'B2900A>\r\n'
 
-    await ammeter.connect()
     with patch('asyncio.sleep') as mock_sleep:
-        await ammeter.setup()
+        await ammeter.connect()
         mock_sleep.assert_awaited_once_with(2.0)
     
     mock_open_conn.assert_awaited_once_with('127.0.0.1', 9999, encoding=False)
@@ -48,6 +47,7 @@ async def test_setup_sends_correct_commands(mock_ammeter_connection):
         (':inp on')
     ]]
 
+    mock_reader.readuntil.assert_awaited_once_with('\n'.encode('ascii'))
     mock_writer.write.assert_has_calls(expected_calls)
     assert mock_writer.write.call_count == 6
 
@@ -56,7 +56,9 @@ async def test_read_data_sends_command_and_parses_response(mock_ammeter_connecti
     ammeter, mock_reader, mock_writer, _ = mock_ammeter_connection
     mock_reader.readuntil.return_value = b'B2900A>      1.2345E-05\r\n'
 
-    await ammeter.connect()
+    with patch('asyncio.sleep') as mock_sleep:
+        await ammeter.connect()
+        mock_sleep.assert_awaited_once_with(2.0)
     mock_reader.reset_mock()
     mock_writer.reset_mock()
 
