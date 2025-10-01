@@ -32,13 +32,14 @@ class Device(ABC):
 
 class TelnetDevice(Device):
     def __init__(self, ip: str | None = None, port: int | None = None,
-                 prompt: str | None = None):
+                 prompt: str | None = None, encoding: str = 'ascii'):
         self._ip: IPv4Address | IPv6Address | None = None
         self._port: int | None = None
         self._prompt = prompt
         self._reader: TelnetReader | None = None
         self._writer: TelnetWriter | None = None
         self._connection_lock = asyncio.Lock()
+        self.encoding = encoding
 
         if ip:
             self.ip = ip
@@ -82,12 +83,12 @@ class TelnetDevice(Device):
                 return
 
             self._check_configured()
-            _log.info(f'Attempting to connect to {host}...')
+            _log.info(f'Attempting to connect to {host} with {self.encoding} encoding...')
 
             try:
                 ip_str = str(self._ip)
                 self._reader, self._writer = await asyncio.wait_for(
-                    open_connection(ip_str, self._port), timeout=3.0)
+                    open_connection(ip_str, self._port, encoding=False), timeout=3.0)
                 _log.info(f'Successfully connected to {host}.')
             except (ConnectionRefusedError, OSError, asyncio.TimeoutError) as e:
                 _log.error(f'Failed to connect to {host}: {e}')
@@ -109,7 +110,7 @@ class TelnetDevice(Device):
     async def _write(self, command: str):
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot write.")
-        encoded_command = (command + '\n').encode('ascii') 
+        encoded_command = (command + '\r\n').encode(self.encoding) 
         self._writer.write(encoded_command)
         await self._writer.drain()
 
@@ -119,7 +120,7 @@ class TelnetDevice(Device):
         
         try:
             raw_bytes = await self._reader.readuntil(separator)
-            response = raw_bytes.decode('ascii')
+            response = raw_bytes.decode(self.encoding)
             if self._prompt is not None and response.startswith(self._prompt):
                 response = response.removeprefix(self._prompt)
             return response.strip()

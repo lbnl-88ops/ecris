@@ -29,9 +29,9 @@ async def test_setup_sends_correct_commands(mock_ammeter_connection):
         await ammeter.setup()
         mock_sleep.assert_awaited_once_with(2.0)
     
-    mock_open_conn.assert_awaited_once_with('127.0.0.1', 9999)
+    mock_open_conn.assert_awaited_once_with('127.0.0.1', 9999, encoding=False)
 
-    expected_calls = [call(f"{c}\n".encode('ascii')) for c in [
+    expected_calls = [call(f"{c}\r\n".encode('ascii')) for c in [
         ("*rst"),
         (':sens:func "curr"'),
         (':sens:curr:rang:auto on'),
@@ -55,7 +55,7 @@ async def test_read_data_sends_command_and_parses_response(mock_ammeter_connecti
     data = await ammeter.read_data(Ammeter.DataKeys.CURRENT)
 
     mock_reader.readuntil.assert_awaited_once_with('\n'.encode('ascii'))
-    mock_writer.write.assert_called_once_with("meas:curr?\n".encode('ascii'))
+    mock_writer.write.assert_called_once_with("meas:curr?\r\n".encode('ascii'))
     mock_writer.drain.assert_awaited_once()
 
     expected_data = 1.2345e-05
