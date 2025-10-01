@@ -18,11 +18,20 @@ def mock_ammeter_connection():
         
         yield ammeter, mock_reader, mock_writer, mock_open_conn
 
+@pytest.mark.asyncio
+async def test_connect(mock_ammeter_connection):
+    ammeter, mock_reader, _, mock_open_conn = mock_ammeter_connection
+    mock_reader.readuntil.return_value = 'B2900A>\r\n'.encode('ascii')
+    await ammeter.connect()
+    mock_open_conn.assert_awaited_once_with('127.0.0.1', 9999, encoding=False)
+    mock_reader.readuntil.assert_awaited_once_with('\n'.encode('ascii'))
+
 
 @pytest.mark.asyncio
 async def test_setup_sends_correct_commands(mock_ammeter_connection):
-    ammeter, _, mock_writer, mock_open_conn = mock_ammeter_connection
+    ammeter, mock_reader, mock_writer, mock_open_conn = mock_ammeter_connection
     expected_nplc = 1.0
+    mock_reader.readuntil.return_value = b'B2900A>\r\n'
 
     await ammeter.connect()
     with patch('asyncio.sleep') as mock_sleep:

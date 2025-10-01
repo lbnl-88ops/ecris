@@ -40,7 +40,6 @@ class Ammeter(TelnetDevice, Device):
             case Ammeter.DataKeys.CURRENT:
                 await self._write('meas:curr?')
                 response = await self._read_until()
-                _log.debug(f'Ammeter response read: {response}')
                 return float(response)
         raise KeyError(f'Read operation for data_key {data_key.name} not implemented.')
 
