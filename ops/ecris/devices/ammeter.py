@@ -17,7 +17,7 @@ class Ammeter(TelnetDevice, Device):
                  port: int | None = None,
                  prompt: str = 'B2900A>',
                  id: str = 'KeySight B2900A'):
-        super().__init__(ip, port, prompt)
+        super().__init__(id, ip, port, prompt)
         
         if not 1 <= read_frequency_per_min <= 2000:
             raise ValueError(f'Bad value of read frequency {read_frequency_per_min} (must be 1-2000)')

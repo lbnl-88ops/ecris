@@ -31,8 +31,9 @@ class Device(ABC):
         pass
 
 class TelnetDevice(Device):
-    def __init__(self, ip: str | None = None, port: int | None = None,
+    def __init__(self, id: str = 'TelnetDevice', ip: str | None = None, port: int | None = None,
                  prompt: str | None = None, encoding: str = 'ascii'):
+        self.id = id
         self._ip: IPv4Address | IPv6Address | None = None
         self._port: int | None = None
         self._prompt = prompt
