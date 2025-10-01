@@ -47,7 +47,7 @@ class WebSocketBroadcaster:
             _log.warning("Server is already running.")
             return
         
-        _log.debug(f"Starting WebSocket broadcaster on ws://{self._host}")
+        _log.info(f"Starting WebSocket broadcaster on ws://{self._host}")
         self._server = await serve(self._connection_handler, str(self._ip), self._port)
 
     async def stop(self):
@@ -55,10 +55,10 @@ class WebSocketBroadcaster:
         if not self._server:
             return
         
-        _log.debug("Stopping WebSocket broadcaster...")
+        _log.info("Stopping WebSocket broadcaster...")
         self._server.close()
         await self._server.wait_closed()
-        _log.debug("WebSocket broadcaster stopped.")
+        _log.info("WebSocket broadcaster stopped.")
         self._server = None
 
     async def broadcast(self, message_data: Any):
