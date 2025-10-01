@@ -21,7 +21,7 @@ class TelnetDataAquisition:
                                                    TelnetDevice], 
                                                   Measurement],
                     aquisition_rate: float) -> None:
-        _log.info(f'Started data aquisition for {self.device.id}')
+        _log.debug(f'Started data aquisition for {self.device.id}')
         self._loop = asyncio.get_running_loop()
         self._data_queue = asyncio.Queue()
         await self.device.connect()
@@ -33,7 +33,7 @@ class TelnetDataAquisition:
             daemon=True)
         self._producer_thread.start()
         self._is_running = True
-        _log.info('Data aquisition service started.')
+        _log.debug('Data aquisition service started.')
 
     @property
     def data_queue(self) -> asyncio.Queue | None:
@@ -43,14 +43,14 @@ class TelnetDataAquisition:
         """Stops the service and disconnects from the device."""
         if not self._is_running:
             return
-        _log.info(f'Stopping data aquisition for {self.device.id}')
+        _log.debug(f'Stopping data aquisition for {self.device.id}')
         
         if self.device.is_connected:
-            _log.info(f'Disconnecting {self.device.id}')
+            _log.debug(f'Disconnecting {self.device.id}')
             await self.device.disconnect()
         
         self._is_running = False
-        _log.info('Data aquisition service stopped.')
+        _log.debug('Data aquisition service stopped.')
 
 
 
