@@ -21,5 +21,8 @@ def time_average_current(loop, ammeter: Ammeter, average_seconds: float) -> Curr
         standard_deviation = -2
     else:
         standard_deviation = float(np.std(current_readings))/average * 100
-    return CurrentMeasurement(ammeter.id, average, standard_deviation)
+    return CurrentMeasurement(source=ammeter.id, 
+                              timestamp=time.time(),
+                              average=average, 
+                              standard_deviation=standard_deviation)
 

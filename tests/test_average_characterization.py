@@ -4,6 +4,7 @@ from unittest.mock import patch, MagicMock, AsyncMock, call
 import asyncio
 import pytest
 from pytest import approx
+import time
 
 from ops.ecris.model.measurement import CurrentMeasurement
 from ops.ecris.operations.producers import time_average_current
@@ -24,7 +25,8 @@ class TestAverage:
     EXPECTED_AVERAGE = 1.5e-5
     EXPECTED_REL_STDEV = approx(27.21655)
     CURRENT_READINGS = [1.0E-05, 1.5E-05, 2.0E-05]
-    TIMESTAMPS = [1000.00, 1000.10, 1000.20, 1000.30, 1000.40] 
+    TIME = time.time()
+    TIMESTAMPS = [1000.00, 1000.10, 1000.20, 1000.30, 1000.40, TIME] 
 
     def test_legacy_code_produces_correct_average(self):
         
@@ -61,7 +63,7 @@ class TestAverage:
     @pytest.mark.asyncio
     async def test_time_average_current_update(self):
         mock_venus_plc = AsyncMock()
-        measurement = CurrentMeasurement('ammeter', self.EXPECTED_AVERAGE, 
+        measurement = CurrentMeasurement('ammeter', self.TIME, self.EXPECTED_AVERAGE, 
                                          self.EXPECTED_REL_STDEV.expected)
         
         await update_plc_average_current(mock_venus_plc, measurement)
