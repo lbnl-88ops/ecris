@@ -26,7 +26,6 @@ async def test_connect(mock_ammeter_connection):
     mock_open_conn.assert_awaited_once_with('127.0.0.1', 9999, encoding=False)
     mock_reader.readuntil.assert_awaited_once_with('\n'.encode('ascii'))
 
-
 @pytest.mark.asyncio
 async def test_setup_sends_correct_commands(mock_ammeter_connection):
     ammeter, mock_reader, mock_writer, mock_open_conn = mock_ammeter_connection
