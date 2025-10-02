@@ -1,6 +1,6 @@
 from ops.ecris.devices import Ammeter
 from ops.ecris.model.measurement import Measurement
-from .data_aquisition import TelnetDataAquisitionService
+from .base_aquisition import TelnetDataAquisitionService
 from ops.ecris.operations.producers import time_average_current
 
 class AverageCurrentAquisitionService(TelnetDataAquisitionService):

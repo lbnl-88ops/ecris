@@ -1,7 +1,6 @@
+import abc
 import asyncio
-from functools import partial
 import threading
-from typing import Callable
 from logging import getLogger
 
 from ops.ecris.data.producer_thread import producer_thread
@@ -10,12 +9,13 @@ from ops.ecris.model.measurement import Measurement
 
 _log = getLogger(__name__)
 
-class TelnetDataAquisitionService:
+class TelnetDataAquisitionService(abc.ABC):
     def __init__(self, device: TelnetDevice) -> None:
         self.device = device
         self._loop: asyncio.AbstractEventLoop | None = None
         self._data_queue: asyncio.Queue | None = None
 
+    @abc.abstractmethod
     def _aquire_data(self) -> Measurement:
         raise NotImplementedError
 
