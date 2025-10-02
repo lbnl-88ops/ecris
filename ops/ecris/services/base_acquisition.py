@@ -36,7 +36,7 @@ class TelnetDataAcquisitionService(abc.ABC):
         _log.debug(f'{self.__class__.__name__} started successfully.')
 
     @property
-    def data_queue(self) -> asyncio.Queue | None:
+    def data_queue(self) -> asyncio.Queue:
         return self._data_queue
 
     async def stop(self):
