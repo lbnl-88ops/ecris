@@ -6,7 +6,7 @@ import pytest
 from pytest import approx
 import time
 
-from ops.ecris.model.measurement import CurrentMeasurement
+from ops.ecris.model.measurement import AverageMeasurement
 from ops.ecris.operations.producers import time_average_current
 from ops.ecris.tasks.device_broadcasters import update_plc_average_current
 from ops.ecris.devices import Ammeter, VenusPLC
@@ -63,7 +63,7 @@ class TestAverage:
     @pytest.mark.asyncio
     async def test_time_average_current_update(self):
         mock_venus_plc = AsyncMock()
-        measurement = CurrentMeasurement('ammeter', self.TIME, self.EXPECTED_AVERAGE, 
+        measurement = AverageMeasurement('ammeter', self.TIME, self.EXPECTED_AVERAGE, 
                                          self.EXPECTED_REL_STDEV.expected)
         
         await update_plc_average_current(mock_venus_plc, measurement)

@@ -6,6 +6,10 @@ class Measurement():
     timestamp: float
 
 @dataclass(frozen=True)
-class CurrentMeasurement(Measurement):
+class ValueMeasurement(Measurement):
+    value: float
+
+@dataclass(frozen=True)
+class AverageMeasurement(Measurement):
     average: float
     standard_deviation: float

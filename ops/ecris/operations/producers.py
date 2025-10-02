@@ -3,11 +3,11 @@ import time
 from typing import Dict
 
 from ops.ecris.devices import Ammeter
-from ops.ecris.model.measurement import CurrentMeasurement
+from ops.ecris.model.measurement import AverageMeasurement
 
 import numpy as np
 
-def time_average_current(loop, ammeter: Ammeter, average_seconds: float) -> CurrentMeasurement:
+def time_average_current(loop, ammeter: Ammeter, average_seconds: float) -> AverageMeasurement:
     time_start = time.time()
     current_readings = []
 
@@ -21,7 +21,7 @@ def time_average_current(loop, ammeter: Ammeter, average_seconds: float) -> Curr
         standard_deviation = -2
     else:
         standard_deviation = float(np.std(current_readings))/average * 100
-    return CurrentMeasurement(source=ammeter.id, 
+    return AverageMeasurement(source=ammeter.id, 
                               timestamp=time.time(),
                               average=average, 
                               standard_deviation=standard_deviation)
