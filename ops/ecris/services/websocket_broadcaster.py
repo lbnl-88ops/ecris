@@ -69,7 +69,6 @@ class WebSocketBroadcaster:
         if not self._connected_clients:
             return
 
-        # Convert dataclasses to dicts for JSON serialization
         if is_dataclass(message_data):
             payload = asdict(message_data)
         else:
@@ -77,11 +76,9 @@ class WebSocketBroadcaster:
             
         json_message = json.dumps(payload)
 
-        # Use asyncio.gather to send messages to all clients concurrently
         tasks = [client.send(json_message) for client in self._connected_clients]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Optionally, log any errors that occurred during the broadcast
         for result in results:
             if isinstance(result, Exception):
                 _log.warning(f"Failed to send message to a client: {result}")

@@ -10,26 +10,23 @@ from ops.ecris.model.measurement import Measurement
 
 _log = getLogger(__name__)
 
-class TelnetDataAquisition:
+class TelnetDataAquisitionService:
     def __init__(self, device: TelnetDevice) -> None:
         self.device = device
         self._loop: asyncio.AbstractEventLoop | None = None
         self._data_queue: asyncio.Queue | None = None
 
-    async def start(self,
-                    aquisition_function: Callable[[asyncio.AbstractEventLoop,
-                                                   TelnetDevice], 
-                                                  Measurement],
-                    aquisition_rate: float) -> None:
+    def _aquire_data(self) -> Measurement:
+        raise NotImplementedError
+
+    async def start(self, aquisition_rate: float) -> None:
         _log.info(f'Starting data acquisition service for "{self.device.id}"...')
         self._loop = asyncio.get_running_loop()
         self._data_queue = asyncio.Queue()
         await self.device.connect()
-        aquisition_thread = partial(
-            aquisition_function, self._loop, self.device)
         self._producer_thread = threading.Thread(
             target=producer_thread,
-            args=(self._loop, self._data_queue, aquisition_thread, aquisition_rate),
+            args=(self._loop, self._data_queue, self._aquire_data, aquisition_rate),
             daemon=True)
         self._producer_thread.start()
         self._is_running = True
