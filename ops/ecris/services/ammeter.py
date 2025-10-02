@@ -1,4 +1,4 @@
-from ops.ecris.devices import Ammeter
+from ops.ecris.devices import Ammeter, ammeter
 from ops.ecris.model.measurement import Measurement
 from .base_acquisition import TelnetDataAcquisitionService
 from ops.ecris.operations.producers import time_average_current

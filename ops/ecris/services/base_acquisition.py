@@ -13,13 +13,13 @@ class TelnetDataAcquisitionService(abc.ABC):
     def __init__(self, device: TelnetDevice) -> None:
         self.device = device
         self._loop: asyncio.AbstractEventLoop | None = None
-        self._data_queue: asyncio.Queue | None = None
+        self._data_queue = asyncio.Queue()
 
     @abc.abstractmethod
     def _acquire_data(self) -> Measurement:
         raise NotImplementedError
 
-    async def start(self, acquisition_rate: float) -> None:
+    async def start(self) -> None:
         _log.info(f'Starting {self.__class__.__name__} for "{self.device.id}"...')
         self._loop = asyncio.get_running_loop()
         
@@ -27,7 +27,7 @@ class TelnetDataAcquisitionService(abc.ABC):
 
         self._producer_thread = threading.Thread(
             target=producer_thread,
-            args=(self._loop, self._data_queue, self._acquire_data, acquisition_rate),
+            args=(self._loop, self._data_queue, self._acquire_data),
             daemon=True,
             name=f"{self.device.id}_Producer"
         )
