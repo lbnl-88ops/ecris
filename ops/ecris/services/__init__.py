@@ -1,2 +1,2 @@
 from .websocket_broadcaster import WebSocketBroadcaster
-from .ammeter_data_aquisition import AverageCurrentAquisitionService
+from .ammeter import AverageCurrentAcquisitionService
