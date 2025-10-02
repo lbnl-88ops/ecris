@@ -13,12 +13,17 @@ class CurrentAcquisitionService(TelnetDataAcquisitionService):
     def __init__(self, ammeter: Ammeter):
         super().__init__(ammeter)
         # Distributer for current data
-        self.distributor = DataDistributor(self._data_queue)
+        self._distributor = DataDistributor(self._data_queue)
         self._distributor_task: asyncio.Task | None = None
 
     async def start(self) -> None:
         await super().start()
-        self._distributor_task = asyncio.create_task(self.distributor.run())
+        self._distributor_task = asyncio.create_task(self._distributor.run())
+
+    def subscribe(self) -> asyncio.Queue:
+        queue = self._distributor.subscribe()
+        _log.debug(f'New subscriber to {self.__class__.__name__}, total subscribers {self._distributor.n_subscribers}')
+        return queue
 
     async def stop(self):
         if self._distributor_task and not self._distributor_task.done():
@@ -38,7 +43,7 @@ class CurrentAcquisitionService(TelnetDataAcquisitionService):
 
 class AverageCurrentService:
     def __init__(self, raw_data_source: CurrentAcquisitionService, average_rate: float = 0.33):
-        input_queue = raw_data_source.distributor.subscribe()
+        input_queue = raw_data_source._distributor.subscribe()
         self._processor = AveragingProcessor(input_queue, average_rate)
         self.data_queue = self._processor.data_queue
 

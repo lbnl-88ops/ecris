@@ -13,8 +13,11 @@ class DataDistributor:
     def subscribe(self) -> asyncio.Queue:
         queue = asyncio.Queue()
         self._subscriber_queues.append(queue)
-        _log.debug(f"New subscriber. Total: {len(self._subscriber_queues)}")
         return queue
+
+    @property
+    def n_subscribers(self) -> int:
+        return len(self._subscriber_queues)
 
     async def run(self): 
         _log.info("DataDistributor is running...")
