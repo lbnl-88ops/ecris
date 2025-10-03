@@ -13,7 +13,8 @@ class Ammeter(TelnetDevice, Device):
         CURRENT = auto()
         NPLC_SETTING = auto()
     class Commands(str, Enum):
-        MEASURE_CURRENT = 'meas:curr?'    
+        MEASURE_CURRENT = 'meas:curr?'
+        RESET = '*rst'
 
     def __init__(self, read_frequency_per_min: float,
                  ip: str | None = None, 
@@ -41,8 +42,8 @@ class Ammeter(TelnetDevice, Device):
     async def send_command(self, command):
         await self._write(command)
         response = await self._read_until('\n')
-        if command in response:
-            _log.debug('Command sent, discarded echo')
+        if command not in response:
+            _log.warning(f'Recieved unexpected response: {response} expected command echo {command}')
 
     async def read_data(self, data_key: DataKeys) -> float:
         match data_key:
@@ -95,5 +96,5 @@ class Ammeter(TelnetDevice, Device):
     
     async def reset(self) -> None:
         _log.debug(f'Resetting Ammeter at {self._host}...')
-        await self.send_command("*rst")
+        await self.send_command(Ammeter.Commands.RESET)
         _log.debug('Ammeter reset.')

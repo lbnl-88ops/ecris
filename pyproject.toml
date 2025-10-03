@@ -16,7 +16,6 @@ dependencies = [
     "pandas",
     "telnetlib3",
     "labjack-ljm",
-    "aiofiles",
     "websockets",
 ]
 
@@ -24,6 +23,7 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-asyncio",
+    "pytest-cov",
 ]
 
 [tool.setuptools.packages.find]
@@ -35,6 +35,11 @@ exclude = ["tests*"]
 version = {attr = "ops.ecris.__version__"}
 
 [tool.pytest.ini_options]
-pythonpath = [
-  "."
+pythonpath = [ 
+    "." 
+    ]
+addopts = [
+    "--cov=ops/ecris",
+    "--cov-report=term-missing", 
+    "--cov-report=xml",          
 ]
