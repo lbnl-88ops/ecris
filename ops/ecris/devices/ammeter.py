@@ -12,6 +12,9 @@ class Ammeter(TelnetDevice, Device):
         """Defines the valid data keys for the Ammeter."""
         CURRENT = auto()
         NPLC_SETTING = auto()
+    class Commands(str, Enum):
+        MEASURE_CURRENT = 'meas:curr?'    
+
     def __init__(self, read_frequency_per_min: float,
                  ip: str | None = None, 
                  port: int | None = None,
@@ -35,12 +38,33 @@ class Ammeter(TelnetDevice, Device):
         """Returns the set of keys that can be written to the device."""
         return {Ammeter.DataKeys.NPLC_SETTING}
 
+    async def send_command(self, command):
+        await self._write(command)
+        response = await self._read_until('\n')
+        if command in response:
+            _log.debug('Command sent, discarded echo')
+
     async def read_data(self, data_key: DataKeys) -> float:
         match data_key:
             case Ammeter.DataKeys.CURRENT:
-                await self._write('meas:curr?')
-                response = await self._read_until('\n')
-                return float(response)
+                await self.send_command(Ammeter.Commands.MEASURE_CURRENT)                                
+                try:
+                    async with asyncio.timeout(2.0): # Overall timeout for the read operation
+                        while True:
+                            response = await self._read_until('\n')
+                            if not response:
+                                continue
+                            try:
+                                return float(response)
+                            except ValueError:
+                                if Ammeter.Commands.MEASURE_CURRENT in response:
+                                    _log.debug("Command echo recieved and discarded")
+                                else:
+                                    _log.debug(f"Discarding non-numeric line: {response!r}")
+                                continue
+                except TimeoutError:
+                    _log.error("Timeout occurred while waiting for a valid numeric response from the ammeter.")
+                    raise ConnectionAbortedError("Ammeter timed out.")
         raise KeyError(f'Read operation for data_key {data_key.name} not implemented.')
 
     async def write_data(self, data_key: DataKeys, value: float) -> None:
@@ -67,9 +91,9 @@ class Ammeter(TelnetDevice, Device):
             f':sens:curr:nplc {self.nplc_setting}',
             ':inp on'
         ]:
-            await self._write(command)
+            await self.send_command(command)
     
     async def reset(self) -> None:
         _log.debug(f'Resetting Ammeter at {self._host}...')
-        await self._write("*rst")
+        await self.send_command("*rst")
         _log.debug('Ammeter reset.')

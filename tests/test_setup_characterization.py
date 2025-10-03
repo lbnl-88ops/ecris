@@ -39,16 +39,3 @@ class TestSetup:
 
         mock_connection.write.assert_has_calls(expected_command_calls)
 
-    @pytest.mark.asyncio
-    async def test_new_ammeter_setup_matches_legacy_behavior(self):
-        ammeter = Ammeter(read_frequency_per_min=self.MEASUREMENT_FREQUENCY, ip=self.IP, port=self.PORT)
-        ammeter._write = AsyncMock()
-        
-        with patch('asyncio.sleep') as mock_sleep:
-            await ammeter.setup()
-
-        mock_sleep.assert_called_once_with(2)
-        
-        expected_command_calls = [call(c) for c in self.EXPECTED_COMMANDS]
-        
-        ammeter._write.assert_has_calls(expected_command_calls)

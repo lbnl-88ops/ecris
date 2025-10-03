@@ -122,10 +122,9 @@ class TelnetDevice(Device):
         try:
             raw_bytes = await self._reader.readuntil(separator.encode(self.encoding))
             response = raw_bytes.decode(self.encoding)
-            if self._prompt is not None and response.startswith(self._prompt):
+            if self._prompt is not None:
                 response = response.removeprefix(self._prompt)
             return response.strip()
-
         except asyncio.IncompleteReadError:
             _log.error("Connection closed while waiting for response.")
             await self.disconnect()
