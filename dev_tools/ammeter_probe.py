@@ -34,16 +34,16 @@ async def probe_ammeter_telnet3(host: str, port: int):
             if command.lower() in ('quit', 'exit'):
                 break
 
-            full_command = f"{command}\r\n"
+            full_command = f"{command}\r\n".encode('ascii')
             print(f"Sending command {full_command!r}")
             writer.write(full_command)
-            writer.drain()
+            await writer.drain()
             
             try:
                 response = await reader.readuntil(seperator)
                 
                 print("--- Response Received ---")
-                print(f'Raw command: {response!r}')
+                print(f'Raw response: {response!r}')
                 print(f'Decoded: {response.decode("ascii").strip()}')
                 print("-------------------------")
 
