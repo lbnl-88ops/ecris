@@ -21,7 +21,7 @@ async def probe_ammeter_telnet3(host: str, port: int):
             
         _log.info("Successfully connected. Waiting for initial banner...")
         
-        initial_output = await reader.readuntil(seperator, timeout=5)
+        initial_output = await reader.readuntil(seperator)
         print("--- Initial Banner Received ---")
         print(initial_output.strip())
         print("-----------------------------")
@@ -40,7 +40,7 @@ async def probe_ammeter_telnet3(host: str, port: int):
             writer.drain()
             
             try:
-                response = await reader.readuntil(seperator, timeout=3.0)
+                response = await reader.readuntil(seperator)
                 
                 print("--- Response Received ---")
                 print(f'Raw command: {response!r}')
