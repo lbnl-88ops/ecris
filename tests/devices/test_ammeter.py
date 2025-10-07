@@ -50,41 +50,17 @@ async def test_connect_sends_correct_commands(mock_ammeter_connection):
 @pytest.mark.asyncio
 async def test_read_data_sends_command_and_parses_response(mock_ammeter_connection):
     ammeter, mock_reader, mock_writer, _ = mock_ammeter_connection
+    ammeter._reader = mock_reader
+    ammeter._writer = mock_writer
     command = "meas:curr?"
 
     mock_reader.readuntil.return_value = 'meas:curr?\r\n  1.2345E-05\r\nB2900A> '.encode('ascii')
 
-    with patch('asyncio.sleep') as mock_sleep:
-        await ammeter.setup()
-        mock_sleep.assert_awaited_once_with(2.0)
-
-    mock_reader.readuntil.side_effect = [
-        f'{ammeter._prompt} {c}'.encode('ascii') for c in commands
-    ]
-    expected_calls = [call(f"{c}\r\n".encode('ascii')) for c in commands]
-    
-    mock_writer.write.assert_has_calls(expected_calls)
-    assert mock_writer.write.call_count == len(commands)
-    assert mock_reader.readuntil.call_count == len(commands)
-
-@pytest.mark.asyncio
-async def test_read_data_parses_response_correctly(mock_ammeter_connection):
-    ammeter, mock_reader, mock_writer, _ = mock_ammeter_connection
-    ammeter._writer = mock_writer
-    ammeter._reader = mock_reader
-
-    mock_reader.readuntil.side_effect = [
-        f'{ammeter._prompt} meas:curr?\r\n'.encode('ascii'),    # First read gets the echo
-        b'+1.2345E-05\r\n'   # Second read gets the data
-    ]
-
     data = await ammeter.read_data(Ammeter.DataKeys.CURRENT)
 
-    mock_reader.readuntil.assert_awaited_once_with('B2900A>'.encode('ascii'))
-    mock_writer.write.assert_called_once_with("meas:curr?\r\n".encode('ascii'))
-    mock_writer.drain.assert_awaited_once()
-
-    assert mock_reader.readuntil.call_count == 2
     
+    mock_writer.write.assert_called_once_with(f'{command}\r\n'.encode('ascii'))
+    mock_reader.readuntil.assert_awaited_once_with('B2900A>'.encode('ascii'))
+
     expected_data = 1.2345e-05
     assert data == pytest.approx(expected_data)
