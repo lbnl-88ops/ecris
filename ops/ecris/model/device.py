@@ -36,7 +36,7 @@ class TelnetDevice(Device):
         self.id = id
         self._ip: IPv4Address | IPv6Address | None = None
         self._port: int | None = None
-        self._prompt = prompt
+        self._prompt = prompt if prompt is not None else '\n'
         self._reader: TelnetReader | None = None
         self._writer: TelnetWriter | None = None
         self._connection_lock = asyncio.Lock()
@@ -90,7 +90,7 @@ class TelnetDevice(Device):
                 ip_str = str(self._ip)
                 self._reader, self._writer = await asyncio.wait_for(
                     open_connection(ip_str, self._port, encoding=False), timeout=3.0)
-                response = await self._read_until('\n')
+                response = await self._read_until(self._prompt)
                 _log.info(f'Successfully connected to {host}, response: {response}.')
             except (ConnectionRefusedError, OSError, asyncio.TimeoutError) as e:
                 _log.error(f'Failed to connect to {host}: {e}')

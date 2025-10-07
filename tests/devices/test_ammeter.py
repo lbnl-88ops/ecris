@@ -41,11 +41,14 @@ async def test_connect_sends_correct_commands(mock_ammeter_connection):
     
     mock_open_conn.assert_awaited_once_with('127.0.0.1', 9999, encoding=False)
 
-    expected_calls = [call(f"{c}\r\n".encode('ascii')) for c in setup_commands]
+    expected_write_calls = [call(f"{c}\r\n".encode('ascii')) for c in setup_commands]
+    expected_readuntil_calls = [call('B2900A>'.encode('ascii'))
+                                for _ in read_until_effects]
 
-    mock_writer.write.assert_has_calls(expected_calls)
-    assert mock_writer.write.call_count == len(expected_calls)
-    assert mock_writer.readuntil.call_count == len(read_until_effects)
+    mock_writer.write.assert_has_calls(expected_write_calls)
+    mock_reader.readuntil.assert_has_calls(expected_readuntil_calls)
+    assert mock_writer.write.call_count == len(expected_write_calls)
+    assert mock_reader.readuntil.call_count == len(read_until_effects)
 
 @pytest.mark.asyncio
 async def test_read_data_sends_command_and_parses_response(mock_ammeter_connection):

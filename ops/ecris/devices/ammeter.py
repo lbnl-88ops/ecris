@@ -1,6 +1,6 @@
 import asyncio
 from logging import getLogger
-from typing import Set
+from typing import Set, List
 from enum import Enum, auto, StrEnum
 
 from ops.ecris.model.device import TelnetDevice, Device
@@ -45,24 +45,25 @@ class Ammeter(TelnetDevice, Device):
         """Returns the set of keys that can be written to the device."""
         return set()
 
-    async def send_command(self, command: str) -> str | None:
+    async def send_command(self, command: str) -> List[str] | str | None:
         """Send command to Ammeter, consume echo and parse for any response"""
         await self._write(command)
         terminator = self._prompt if self._prompt is not None else '\n'
         raw_response = await self._read_until(terminator)
-        response_lines = raw_response.split()
-        return None
+        response_lines = [l.strip() for l in raw_response.split()]
+        response = [l for l in response_lines if l != self._prompt and l != command]
+        if len(response) == 1:
+            return response[0]
+        return response
 
     async def read_data(self, data_key: DataKeys) -> float:
         match data_key:
             case Ammeter.DataKeys.CURRENT:
-                await self.send_command(Ammeter.Commands.MEASURE_CURRENT)                                
                 try:
                     async with asyncio.timeout(2.0): # Overall timeout for the read operation
                         while True:
                             response = await self.send_command(Ammeter.Commands.MEASURE_CURRENT)
                             try:
-                                assert response is not None
                                 return float(response)
                             except ValueError or AssertionError:
                                     _log.debug(f"Error in current measurement, non-float response: {response!r}")
@@ -89,7 +90,7 @@ class Ammeter(TelnetDevice, Device):
                           Ammeter.Commands.SET_NPLC.format(self.nplc_setting),
                           Ammeter.Commands.INPUT_ON]
         for command in setup_commands:
-            await self._write(command)
+            await self.send_command(command)
     
     async def reset(self) -> None:
         _log.debug(f'Resetting Ammeter at {self._host}...')
