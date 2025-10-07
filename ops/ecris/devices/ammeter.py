@@ -79,9 +79,9 @@ class Ammeter(TelnetDevice, Device):
     async def connect(self) -> None:
         _log.debug(f'Connecting Ammeter at {self._host}...')
         await super().connect()
-        await self.setup()
+        await self._setup()
 
-    async def setup(self) -> None:
+    async def _setup(self) -> None:
         await self.reset()
         _log.debug(f'Setting up Ammeter at {self._host}...')
         await asyncio.sleep(2)
