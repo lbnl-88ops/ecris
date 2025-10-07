@@ -10,9 +10,9 @@ from ops.ecris.model.measurement import AverageMeasurement
 from ops.ecris.operations.producers import time_average_current
 from ops.ecris.tasks.device_broadcasters import update_plc_average_current
 from ops.ecris.devices import Ammeter, VenusPLC
-from .legacy_code.legacy_functions import legacy_current_measurement
+from .ammeter_legacy_functions import legacy_current_measurement
 
-LEGACY_MODULE = 'tests.legacy_code.legacy_functions.'
+LEGACY_MODULE = 'tests.legacy_code.ammeter_legacy_functions.'
 MODULE = 'ops.ecris.operations.producers.'
 VENUS_MODULE = 'ops.ecris.devices.venus_plc.'
 

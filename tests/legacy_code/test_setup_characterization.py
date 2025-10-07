@@ -1,10 +1,8 @@
-from unittest.mock import patch, MagicMock, call, AsyncMock
-import pytest
+from unittest.mock import patch, MagicMock, call
 
-from .legacy_code import legacy_functions
-from ops.ecris.devices import Ammeter
+import tests.legacy_code.ammeter_legacy_functions as ammeter_legacy_functions
 
-LEGACY_SETUP_MODULE = 'tests.legacy_code.legacy_functions'
+LEGACY_SETUP_MODULE = 'tests.legacy_code.ammeter_legacy_functions'
 
 class TestSetup:
     IP = "10.10.100.75"
@@ -24,11 +22,11 @@ class TestSetup:
         
         with patch(f'{LEGACY_SETUP_MODULE}.Telnet') as mock_telnet, \
              patch(f'{LEGACY_SETUP_MODULE}.time.sleep') as mock_sleep, \
-             patch.object(legacy_functions, 'measurementFrequency', self.MEASUREMENT_FREQUENCY):
+             patch.object(ammeter_legacy_functions, 'measurementFrequency', self.MEASUREMENT_FREQUENCY):
             
             mock_telnet.return_value = mock_connection
             
-            returned_connection = legacy_functions.setupSystem(verbose=0)
+            returned_connection = ammeter_legacy_functions.setupSystem(verbose=0)
 
         mock_telnet.assert_called_once_with(self.IP, self.PORT, timeout=3)
         mock_connection.read_until.assert_called_once_with(b'\n')
