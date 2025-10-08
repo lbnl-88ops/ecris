@@ -19,12 +19,18 @@ class VENUSController:
     def read_vars(self) -> List[str]:
         raise NotImplementedError('VENUSController is not an implemented class')
 
+
 class VenusPLC(Device):
     class DataKeys(Enum):
         AVERAGE_CURRENT = auto()
         CURRENT_STDEV = auto()
         BATMAN_CURRENT = auto()
         EXTRACTION_VOLTAGE = auto()
+
+    _PLC_WRITE_KEYS: Dict[DataKeys, str] = {
+        DataKeys.AVERAGE_CURRENT: 'fcv1_ammeter',
+        DataKeys.CURRENT_STDEV: 'fcv1_ammeter_stdev',
+    }
 
     def __init__(self, venus_controller: VENUSController):
         self._sync_venus = venus_controller
@@ -37,14 +43,11 @@ class VenusPLC(Device):
                 self._sync_venus.read, [data_key])
         return data_values
 
-    async def write_data(self, data_key: Any, value: float) -> None:
-        match data_key:
-            case VenusPLC.DataKeys.AVERAGE_CURRENT:
-                key = 'fcv1_ammeter'
-            case VenusPLC.DataKeys.CURRENT_STDEV:
-                key = 'fcv1_ammeter_stdev'
-            case _:
-                raise KeyError(f'Write operation for data_key {data_key.name} not implemented.')
+    async def write_data(self, data_key: DataKeys, value: float) -> None:
+        try:
+            key = self._PLC_WRITE_KEYS[data_key]
+        except KeyError:
+            raise KeyError(f'Write operation for data_key {data_key.name} not implemented.')
         await asyncio.to_thread(self._sync_venus.write, {key: value})
         return
 

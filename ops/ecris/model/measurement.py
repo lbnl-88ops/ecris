@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Dict, Any
 
 @dataclass(frozen=True)
 class Measurement():
@@ -8,6 +9,10 @@ class Measurement():
 @dataclass(frozen=True)
 class ValueMeasurement(Measurement):
     value: float
+
+@dataclass(frozen=True)
+class MultiValueMeasurement(Measurement):
+    values: Dict[str, Any]
 
 @dataclass(frozen=True)
 class AverageMeasurement(Measurement):
