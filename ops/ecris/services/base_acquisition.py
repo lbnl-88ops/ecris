@@ -16,7 +16,7 @@ class BaseAquisitionService(abc.ABC):
         self._data_queue = asyncio.Queue()
     
     @abc.abstractmethod
-    def _aquire_data(self) -> Any:
+    def _acquire_data(self) -> Any:
         raise NotImplementedError
 
     async def start(self) -> None:

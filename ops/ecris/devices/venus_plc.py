@@ -2,6 +2,7 @@ import asyncio
 from logging import getLogger
 from typing import Any, Dict, List, Tuple
 from enum import Enum, auto
+import random
 
 from ops.ecris.model.device import Device
 _log = getLogger(__name__)
@@ -15,8 +16,16 @@ class VENUSController:
     def write(self, data: Dict[str, float]) -> None:
         _log.debug(f'Wrote to VENUS Controller: {data}')
     def read(self, data: List[str]) -> float:
+        match data[0]:
+            case 'test_float_1':
+                return 1*random.random()
+            case 'test_float_2':
+                return 2*random.random()
+            case 'test_bool':
+                return random.randint(0, 1)
         raise NotImplementedError('VENUSController is not an implemented class')
     def read_vars(self) -> List[str]:
+        return ['test_float_1', 'test_bool', 'test_float_2']
         raise NotImplementedError('VENUSController is not an implemented class')
 
 
