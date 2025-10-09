@@ -7,26 +7,31 @@ import random
 from ops.ecris.model.device import Device
 _log = getLogger(__name__)
 
-#from venus_data_utils.venusplc as import VENUSController
+try:
+    from venus_data_utils.venusplc import VENUSController
+except ModuleNotFoundError:
+    _log.warning(
+    "Could not import VENUSController from venus_data_utils. "
+    "Falling back to dummy implementation for development/testing.")
 
-class VENUSController:
-    """Dummy class for future import"""
-    def __init__(self, read_only: bool):
-        pass
-    def write(self, data: Dict[str, float]) -> None:
-        _log.debug(f'Wrote to VENUS Controller: {data}')
-    def read(self, data: List[str]) -> float:
-        match data[0]:
-            case 'test_float_1':
-                return 1*random.random()
-            case 'test_float_2':
-                return 2*random.random()
-            case 'test_bool':
-                return random.randint(0, 1)
-        raise NotImplementedError('VENUSController is not an implemented class')
-    def read_vars(self) -> List[str]:
-        return ['test_float_1', 'test_bool', 'test_float_2']
-        raise NotImplementedError('VENUSController is not an implemented class')
+    class VENUSController:
+        """Dummy class for future import"""
+        def __init__(self, read_only: bool):
+            pass
+        def write(self, data: Dict[str, float]) -> None:
+            _log.debug(f'Wrote to VENUS Controller: {data}')
+        def read(self, data: List[str]) -> float:
+            match data[0]:
+                case 'test_float_1':
+                    return 1*random.random()
+                case 'test_float_2':
+                    return 2*random.random()
+                case 'test_bool':
+                    return random.randint(0, 1)
+            raise NotImplementedError('VENUSController is not an implemented class')
+        def read_vars(self) -> List[str]:
+            return ['test_float_1', 'test_bool', 'test_float_2']
+            raise NotImplementedError('VENUSController is not an implemented class')
 
 
 class VenusPLC(Device):

@@ -10,9 +10,10 @@ import threading
 _log = getLogger(__name__)
 
 class PLCDataAquisitionService(BaseAquisitionService):
-    def __init__(self, venus_plc: VenusPLC):
+    def __init__(self, venus_plc: VenusPLC, update_interval: float = 1.0):
         super().__init__()
         self.venus_plc: VenusPLC = venus_plc
+        self.update_interval = update_interval
 
     async def start(self) -> None:
         _log.info(f'Starting {self.__class__.__name__}...')
@@ -39,7 +40,9 @@ class PLCDataAquisitionService(BaseAquisitionService):
         coroutine = self.venus_plc.get_all_data()
         future = asyncio.run_coroutine_threadsafe(coroutine, self._loop)
         data = future.result()
+        data_time = time.time()
+        time.sleep(self.update_interval)
         return MultiValueMeasurement(
             source='VENUS PLC',
-            timestamp=time.time(),
+            timestamp=data_time,
             values={v[0]: v[1] for v in data.values()})
