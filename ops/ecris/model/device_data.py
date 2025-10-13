@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from collections import OrderedDict
 from typing import Dict, List, Tuple
+from functools import cached_property
 
 @dataclass
 class DataLabel:
@@ -20,6 +21,7 @@ class DataLabel:
 class DeviceData:
     def __init__(self, labels: Dict[str, List[Tuple[str, str | None, str]]]):
         self._raw_labels = labels
+        self._category_by_key_cache: Dict[str, str] | None = None
 
     @property
     def labels(self) -> List[DataLabel]:
@@ -41,4 +43,16 @@ class DeviceData:
     @property
     def labels_by_key(self) -> Dict[str, DataLabel]:
         return {d.key: d for d in self.labels}
+
+    @cached_property
+    def category_by_key(self) -> Dict[str, str]:
+        return {label.key: category
+            for category, labels in self.labels_by_category.items()
+            for label in labels}
+
+    def get_category(self, key: str) -> str:
+        try:
+            return self.category_by_key[key]
+        except KeyError:
+            raise KeyError(f"The data key '{key}' was not found in any category.")
 
