@@ -34,7 +34,7 @@ except ModuleNotFoundError:
             return ['test_float_1', 'test_bool', 'test_float_2']
             raise NotImplementedError('VENUSController is not an implemented class')
 
-VENUS_PLC_DATA = DeviceData({
+VENUS_PLC_DATA_DEFINITIONS = DeviceData({
         "Vacuum": [
             ("Injection", "mbar", "inj_mbar"),
             ("Extraction", "mbar", "ext_mbar"),

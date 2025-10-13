@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from collections import OrderedDict
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Set
 from functools import cached_property
 
 @dataclass
@@ -49,6 +49,13 @@ class DeviceData:
         return {label.key: category
             for category, labels in self.labels_by_category.items()
             for label in labels}
+
+    @cached_property
+    def keys_by_category(self) -> Dict[str, Set[str]]:
+        return {
+            category: {label.key for label in labels}
+            for category, labels in self.labels_by_category.items()
+        }
 
     def get_category(self, key: str) -> str:
         try:
