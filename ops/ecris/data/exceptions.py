@@ -1,0 +1,2 @@
+class ECRISDataFailure(IOError):
+    pass
