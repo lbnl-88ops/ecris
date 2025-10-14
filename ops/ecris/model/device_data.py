@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from collections import OrderedDict
 from typing import Dict, List, Tuple, Set
 from functools import cached_property
 
@@ -23,7 +22,7 @@ class DeviceData:
         self._raw_labels = labels
         self._category_by_key_cache: Dict[str, str] | None = None
 
-    @property
+    @cached_property
     def labels(self) -> List[DataLabel]:
         return [
             DataLabel(label=f"{category} {data}", units=units, key=key)
@@ -31,7 +30,7 @@ class DeviceData:
             for data, units, key in key_data_pairs
         ]
 
-    @property
+    @cached_property
     def labels_by_category(self) -> Dict[str, List[DataLabel]]:
         return {
             category: [
@@ -40,7 +39,7 @@ class DeviceData:
             ]
             for category, key_data_pairs in self._raw_labels.items()}
 
-    @property
+    @cached_property
     def labels_by_key(self) -> Dict[str, DataLabel]:
         return {d.key: d for d in self.labels}
 
