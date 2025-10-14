@@ -62,7 +62,7 @@ VENUS_PLC_DATA_DEFINITIONS = DeviceData(
             (
                 "Temperature at bottom of liquid nitrogen vessel",
                 "K",
-                "bottom_In_vessel",
+                "bottom_ln_vessel",
             ),
             ("Cryostat vacuum pressure", "torr", "cryo_vac_torr"),
             ("Conduction bar temperature", "K", "fifty_k_cond_bar"),
