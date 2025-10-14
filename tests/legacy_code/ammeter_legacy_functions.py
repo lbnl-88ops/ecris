@@ -1,5 +1,6 @@
 import time
 import numpy as np
+from typing import List
 
 class Telnet:
     def __init__(ip, port, timeout):
@@ -10,6 +11,13 @@ class Telnet:
 class VenusDummy:
     def write(self, data):
         print(f'VENUS WRITE: {data}')
+    def read_vars(self) -> List[str]:
+        return []
+    def read(self, str) -> float:
+        return 0
+
+# set directory to save csds
+directory = "/data/csds/"
 
 venus = VenusDummy()
 measurementFrequency = 0
@@ -69,3 +77,9 @@ def setupSystem(verbose=0):
     sendCommand(connection,':inp on')
 
     return connection
+
+def datasheet(tst_str):
+    readvars = venus.read_vars()
+    with open(directory+'/dsht_'+tst_str,'w') as f:
+        for i in range(len(readvars)):  
+            f.write("%4i %.5e %s\n"%(i,venus.read([readvars[i]]),readvars[i]))

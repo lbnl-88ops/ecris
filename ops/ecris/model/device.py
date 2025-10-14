@@ -13,7 +13,7 @@ class Device(ABC):
     An abstract base class for a controllable device.
     """
     @abstractmethod
-    async def get_data(self, data_key: Any) -> float:
+    async def read_data(self, data_key: Any) -> float:
         """
         Fetches a single data point from the device.
         Raises:
@@ -31,14 +31,16 @@ class Device(ABC):
         pass
 
 class TelnetDevice(Device):
-    def __init__(self, ip: str | None = None, port: int | None = None,
-                 prompt: str | None = None):
+    def __init__(self, id: str = 'TelnetDevice', ip: str | None = None, port: int | None = None,
+                 prompt: str | None = None, encoding: str = 'ascii'):
+        self.id = id
         self._ip: IPv4Address | IPv6Address | None = None
         self._port: int | None = None
-        self._prompt = prompt
+        self._prompt = prompt if prompt is not None else '\n'
         self._reader: TelnetReader | None = None
         self._writer: TelnetWriter | None = None
         self._connection_lock = asyncio.Lock()
+        self.encoding = encoding
 
         if ip:
             self.ip = ip
@@ -82,13 +84,14 @@ class TelnetDevice(Device):
                 return
 
             self._check_configured()
-            _log.info(f'Attempting to connect to {host}...')
+            _log.info(f'Attempting to connect to {host} with {self.encoding} encoding...')
 
             try:
                 ip_str = str(self._ip)
                 self._reader, self._writer = await asyncio.wait_for(
-                    open_connection(ip_str, self._port), timeout=3.0)
-                _log.info(f'Successfully connected to {host}.')
+                    open_connection(ip_str, self._port, encoding=False), timeout=3.0)
+                response = await self._read_until(self._prompt)
+                _log.info(f'Successfully connected to {host}, response: {response}.')
             except (ConnectionRefusedError, OSError, asyncio.TimeoutError) as e:
                 _log.error(f'Failed to connect to {host}: {e}')
                 self._reader = None
@@ -109,21 +112,19 @@ class TelnetDevice(Device):
     async def _write(self, command: str):
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot write.")
-        encoded_command = (command + '\n').encode('ascii') 
+        encoded_command = (command + '\r\n').encode(self.encoding) 
         self._writer.write(encoded_command)
         await self._writer.drain()
 
-    async def _read_until(self, separator: bytes = b'\n') -> str:
+    async def _read_until(self, separator: str = '\n') -> str:
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot read.")
-        
         try:
-            raw_bytes = await self._reader.readuntil(separator)
-            response = raw_bytes.decode('ascii')
-            if self._prompt is not None and response.startswith(self._prompt):
+            raw_bytes = await self._reader.readuntil(separator.encode(self.encoding))
+            response = raw_bytes.decode(self.encoding)
+            if self._prompt is not None:
                 response = response.removeprefix(self._prompt)
             return response.strip()
-
         except asyncio.IncompleteReadError:
             _log.error("Connection closed while waiting for response.")
             await self.disconnect()

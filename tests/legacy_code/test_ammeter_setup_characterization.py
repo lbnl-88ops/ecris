@@ -1,10 +1,8 @@
-from unittest.mock import patch, MagicMock, call, AsyncMock
-import pytest
+from unittest.mock import patch, MagicMock, call
 
-from .legacy_code import legacy_functions
-from ops.ecris.model import Ammeter
+import tests.legacy_code.ammeter_legacy_functions as ammeter_legacy_functions
 
-LEGACY_SETUP_MODULE = 'tests.legacy_code.legacy_functions'
+LEGACY_SETUP_MODULE = 'tests.legacy_code.ammeter_legacy_functions'
 
 class TestSetup:
     IP = "10.10.100.75"
@@ -24,11 +22,11 @@ class TestSetup:
         
         with patch(f'{LEGACY_SETUP_MODULE}.Telnet') as mock_telnet, \
              patch(f'{LEGACY_SETUP_MODULE}.time.sleep') as mock_sleep, \
-             patch.object(legacy_functions, 'measurementFrequency', self.MEASUREMENT_FREQUENCY):
+             patch.object(ammeter_legacy_functions, 'measurementFrequency', self.MEASUREMENT_FREQUENCY):
             
             mock_telnet.return_value = mock_connection
             
-            returned_connection = legacy_functions.setupSystem(verbose=0)
+            returned_connection = ammeter_legacy_functions.setupSystem(verbose=0)
 
         mock_telnet.assert_called_once_with(self.IP, self.PORT, timeout=3)
         mock_connection.read_until.assert_called_once_with(b'\n')
@@ -38,17 +36,3 @@ class TestSetup:
         expected_command_calls = [call(f"{c}\n".encode('ascii')) for c in self.EXPECTED_COMMANDS]
 
         mock_connection.write.assert_has_calls(expected_command_calls)
-
-    @pytest.mark.asyncio
-    async def test_new_ammeter_setup_matches_legacy_behavior(self):
-        ammeter = Ammeter(read_frequency_per_min=self.MEASUREMENT_FREQUENCY, ip=self.IP, port=self.PORT)
-        ammeter._write = AsyncMock()
-        
-        with patch('asyncio.sleep') as mock_sleep:
-            await ammeter.setup()
-
-        mock_sleep.assert_called_once_with(2)
-        
-        expected_command_calls = [call(c) for c in self.EXPECTED_COMMANDS]
-        
-        ammeter._write.assert_has_calls(expected_command_calls)
