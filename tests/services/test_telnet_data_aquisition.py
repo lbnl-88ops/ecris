@@ -45,39 +45,31 @@ async def test_start_connects_device_and_starts_producer_thread(mock_device):
     
     assert service._is_running is True
 
-# @pytest.mark.asyncio
-# async def test_stop_disconnects_device_when_running(mocker, mock_device):
-#     """
-#     Verifies that stop() awaits device disconnect and updates state
-#     when the service is running.
-#     """
-#     # ARRANGE
-#     service = ConcreteAcquisitionService(device=mock_device)
+@pytest.mark.asyncio
+async def test_stop_disconnects_device_when_running(mock_device):
+    """
+    Verifies that stop() awaits device disconnect and updates state
+    when the service is running.
+    """
+    service = ConcreteAcquisitionService(device=mock_device)
     
-#     # Manually set the "running" state to isolate this test from start()
-#     service._is_running = True
-#     mock_device.is_connected = True
+    service._is_running = True
+    mock_device.is_connected = True
 
-#     # ACT
-#     await service.stop()
+    await service.stop()
 
-#     # ASSERT
-#     mock_device.disconnect.assert_awaited_once()
-#     assert service._is_running is False
+    mock_device.disconnect.assert_awaited_once()
+    assert service._is_running is False
 
-# @pytest.mark.asyncio
-# async def test_stop_does_nothing_when_already_stopped(mocker, mock_device):
-#     """
-#     Verifies the guard clause in stop() prevents multiple disconnects.
-#     """
-#     # ARRANGE
-#     service = ConcreteAcquisitionService(device=mock_device)
-#     service._is_running = False  # Ensure service is already in the "stopped" state
+@pytest.mark.asyncio
+async def test_stop_does_nothing_when_already_stopped(mock_device):
+    """
+    Verifies the guard clause in stop() prevents multiple disconnects.
+    """
+    service = ConcreteAcquisitionService(device=mock_device)
+    service._is_running = False
 
-#     # ACT
-#     await service.stop()
+    await service.stop()
 
-#     # ASSERT
-#     # The key assertion: disconnect should NOT have been called.
-#     mock_device.disconnect.assert_not_called()
-#     mock_device.disconnect.assert_not_awaited() # More specific for async
+    mock_device.disconnect.assert_not_called()
+    mock_device.disconnect.assert_not_awaited()
