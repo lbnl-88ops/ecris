@@ -175,9 +175,11 @@ class VenusPLC(Device):
         BATMAN_CURRENT = auto()
         EXTRACTION_VOLTAGE = auto()
 
-    _PLC_WRITE_KEYS: Dict[DataKeys, str] = {
+    _PLC_KEYS: Dict[DataKeys, str] = {
         DataKeys.AVERAGE_CURRENT: 'fcv1_ammeter',
         DataKeys.CURRENT_STDEV: 'fcv1_ammeter_stdev',
+        DataKeys.BATMAN_CURRENT: 'batman_i',
+        DataKeys.EXTRACTION_VOLTAGE: 'extraction_v'
     }
 
     def __init__(self, venus_controller: VENUSController):
@@ -196,7 +198,7 @@ class VenusPLC(Device):
     async def write_data(self, data_key: DataKeys, value: float) -> None:
         async with self._lock:
             try:
-                key = self._PLC_WRITE_KEYS[data_key]
+                key = self._PLC_KEYS[data_key]
             except KeyError:
                 raise KeyError(f'Write operation for data_key {data_key.name} not implemented.')
             await asyncio.to_thread(self._sync_venus.write, {key: value})
@@ -204,13 +206,10 @@ class VenusPLC(Device):
 
     async def read_data(self, data_key: DataKeys) -> float:
         async with self._lock:
-            match data_key:
-                case VenusPLC.DataKeys.EXTRACTION_VOLTAGE:
-                    key = 'extraction_v'
-                case VenusPLC.DataKeys.BATMAN_CURRENT:
-                    key = 'batman_i_set'
-                case _:
-                    raise KeyError(f'Read operation for data_key {data_key.name} not implemented.')
+            try:
+                key = self._PLC_KEYS[data_key]
+            except KeyError:
+                raise KeyError(f'Read operation for data_key {data_key.name} not implemented.')
             value = await asyncio.to_thread(self._sync_venus.read, [key])
             return value
         

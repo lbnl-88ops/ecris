@@ -25,7 +25,7 @@ class TestVenusWriteData:
 class TestVenusReadData:
     params = [
         (VenusPLC.DataKeys.EXTRACTION_VOLTAGE, 123, 'extraction_v'),
-        (VenusPLC.DataKeys.BATMAN_CURRENT, 3E-5, 'batman_i_set')
+        (VenusPLC.DataKeys.BATMAN_CURRENT, 3E-5, 'batman_i')
     ]
     ids = ['extraction voltage', 'BATMAN current']
 
