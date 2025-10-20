@@ -23,9 +23,13 @@ class FakeMotorController:
         self._to_buffer('Unkown banner.')
         self.command_log = []
 
+    def post_init_reset(self):
+        self.command_log = []
+        self._buffer = []
+        self._prompt = "SYS> "
+
     @property
     def buffer_clear(self) -> bool:
-        print(self._buffer)
         return len(self._buffer) == 0
 
     def _to_buffer(self, unencoded_command) -> None:
@@ -46,12 +50,23 @@ class FakeMotorController:
         del self._buffer[0:end + 1]
         return read_buffer
 
-    def handle_command(self, command_str):
-        self.command_log.append(command_str)
-        command_str = command_str.decode('ascii').strip()
+    def handle_command(self, raw_command):
+        self.command_log.append(raw_command)
+        command = raw_command.decode('ascii').strip()
         command_return = ""
 
-        match command_str:
-            case "PROG0":
-                self._prompt = 'POO> '
-        self._to_buffer(command_return)
+        if command == "PROG0":
+            self._prompt = "POO> "
+        elif command.startswith("?BIT("):
+            queried_bit = int(command.removeprefix("?BIT(")[:-1])
+            match queried_bit:
+                case 16128:
+                    command_return = int(self._axis_clear_states[0])
+                case 16160:
+                    command_return = int(self._axis_clear_states[1])
+                case 16192:
+                    command_return = int(self._axis_clear_states[2])
+                case 16224:
+                    command_return = int(self._axis_clear_states[3])
+
+        self._to_buffer(command + '\r\n' + str(command_return))
