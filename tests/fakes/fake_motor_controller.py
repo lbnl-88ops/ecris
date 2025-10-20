@@ -15,8 +15,8 @@ class FakeMotorController:
         else:
             self._unit_distance = -1
 
-        self._is_moving = False
-        self._axis_clear_states = [True, True, True, True] # Default to clear
+        self.in_motion = False
+        self.axis_clear_states = [True, True, True, True] # Default to clear
 
         self._prompt = "SYS> "
         self._buffer = []
@@ -61,12 +61,14 @@ class FakeMotorController:
             queried_bit = int(command.removeprefix("?BIT(")[:-1])
             match queried_bit:
                 case 16128:
-                    command_return = int(self._axis_clear_states[0])
+                    command_return = int(self.axis_clear_states[0])
                 case 16160:
-                    command_return = int(self._axis_clear_states[1])
+                    command_return = int(self.axis_clear_states[1])
                 case 16192:
-                    command_return = int(self._axis_clear_states[2])
+                    command_return = int(self.axis_clear_states[2])
                 case 16224:
-                    command_return = int(self._axis_clear_states[3])
+                    command_return = int(self.axis_clear_states[3])
+                case 516:
+                    command_return = int(self.in_motion)
 
         self._to_buffer(command + '\r\n' + str(command_return))

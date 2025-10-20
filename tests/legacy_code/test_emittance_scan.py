@@ -49,7 +49,7 @@ def test_axis_clear_calculates_correct_bit_and_calls_send_command(
     expected_state):
 
     motor, fake_controller, _ , mock_sleep = mock_motor_controller
-    fake_controller._axis_clear_states[expected_other_axis] = expected_state
+    fake_controller.axis_clear_states[expected_other_axis] = expected_state
 
     expected_bit = 16128 + expected_other_axis * 32
     commands = [f"?BIT({expected_bit})"]
