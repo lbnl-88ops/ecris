@@ -1,4 +1,12 @@
-from typing import List
+from imaplib import Commands
+from typing import List, Dict, Any
+from enum import Enum, auto
+
+from unittest.mock import call
+
+from ops.ecris.devices.motor_controller import MotorController
+
+Axis = MotorController.Axis
 
 class FakeMotorController:
     def __init__(self, unit_mode="mm", initial_positions=None):
@@ -15,7 +23,10 @@ class FakeMotorController:
         else:
             self._unit_distance = -1
 
-        self.axis_clear_states = [True, True, True, True] # Default to clear
+        self.axis_clear_states = {Axis.X: True, 
+                                  Axis.Y: True, 
+                                  Axis.Z: True, 
+                                  Axis.A: True} # Default to clear
 
         self._prompt = "SYS> "
         self._buffer = []
@@ -65,15 +76,43 @@ class FakeMotorController:
             queried_bit = int(command.removeprefix("?BIT(")[:-1])
             match queried_bit:
                 case 16128:
-                    command_return = int(self.axis_clear_states[0])
+                    command_return = int(self.axis_clear_states[Axis.X])
                 case 16160:
-                    command_return = int(self.axis_clear_states[1])
+                    command_return = int(self.axis_clear_states[Axis.Y])
                 case 16192:
-                    command_return = int(self.axis_clear_states[2])
+                    command_return = int(self.axis_clear_states[Axis.Z])
                 case 16224:
-                    command_return = int(self.axis_clear_states[3])
+                    command_return = int(self.axis_clear_states[Axis.A])
                 case 516:
                     command_return = int(self._motion_steps_remaining > 0)
                     self._motion_steps_remaining -= 1
 
         self._to_buffer(command + '\r\n' + str(command_return))
+
+class FakeState(Enum):
+    AxisNotClear = auto()
+
+class CheckTestPassed:
+    def __init__(self, fake: FakeMotorController, mock_sleep, commands):
+        self._mock_sleep = mock_sleep
+        self._fake = fake
+        self._commands = commands
+
+    def assert_passed(self):
+        assert self._fake.decoded_log == self._commands
+        assert self._fake.buffer_clear
+        self._mock_sleep.assert_has_calls([call(0.07)]*len(self._commands))
+        assert self._mock_sleep.call_count == len(self._commands)
+
+        
+
+def set_up_test(setup_classes,
+               states: Dict[FakeState, Any],
+               commands):
+    motor, fake, mock_connection, mock_sleep = setup_classes
+    for state, value in states.items():
+        match state:
+            case FakeState.AxisNotClear:
+                fake.axis_clear_states[value] = False
+    return CheckTestPassed(fake, mock_sleep, commands)
+    

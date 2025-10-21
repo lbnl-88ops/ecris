@@ -1,5 +1,5 @@
 import asyncio
-from enum import StrEnum
+from enum import StrEnum, Enum, auto
 from logging import getLogger
 from typing import Any
 
@@ -12,6 +12,19 @@ class MotorController(TelnetDevice):
     class Commands(StrEnum):
         OPEN_PROGRAM0 = 'PROG0'
         SET_RAMPING = "ACC 5 DEC 5 VEL 15 STP 100"
+
+    class Axis(Enum):
+        X = auto()
+        Y = auto()
+        Z = auto()
+        A = auto()
+
+    PERPENDICULAR_AXIS = {
+        Axis.X: Axis.Y,
+        Axis.Y: Axis.X,
+        Axis.Z: Axis.A,
+        Axis.A: Axis.Z
+    }
 
     def __init__(self, id: str = 'ACR74C', 
                  ip: str | None = None, 
