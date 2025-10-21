@@ -68,11 +68,12 @@ def test_axis_clear_calculates_correct_bit_and_calls_send_command(
     assert state == expected_state
     test.assert_passed()
 
-def _full_move_sequence(axis: Axis, position_to_move: float, move_steps: int):
+def _full_move_sequence(axis: Axis, position_to_move: float, move_steps: int,
+                        relative=False):
     expected_commands = ([
         Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis)), 
         Commands.DRIVE_ON(axis), 
-        Commands.MOVE(axis, position_to_move)] 
+        Commands.RELATIVE_MOVE(axis, position_to_move) if relative else Commands.MOVE(axis, position_to_move)]
         + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (move_steps + 1)
         + [Commands.DRIVE_OFF(axis)])
     return expected_commands
@@ -84,28 +85,33 @@ def _cleanup_after_limit_sequence(axis: Axis):
            Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
 
 @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.A])
-def test_move_to(mock_motor_controller, axis):
+@pytest.mark.parametrize("relative", [False, True])
+def test_move_to(mock_motor_controller, axis, relative):
     motor, _, _, _ = mock_motor_controller
     position_to_move = 15.5
     move_steps: int = 2
-    expected_commands = _full_move_sequence(axis, position_to_move, move_steps)
+    expected_commands = _full_move_sequence(axis, position_to_move, move_steps, relative)
     
     test = set_up_test(mock_motor_controller, {
         FakeState.MotionSteps: move_steps,
         FakeState.DecrementMotionOnCheck: True}, expected_commands)
 
-    motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
+    if relative:
+        motor.relative_move(position_to_move, LEGACY_AXIS_MAPPING[axis])
+    else:
+        motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
     test.assert_passed()
     
 @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.A])
-def test_move_to_axis_not_clear(mock_motor_controller, axis):
+@pytest.mark.parametrize("relative", [False, True])
+def test_move_to_axis_not_clear(mock_motor_controller, axis, relative):
     motor, _, _, _ = mock_motor_controller
     position_to_move = 15.5
     perpendicular_axis = PERPENDICULAR_AXIS[axis]
     move_steps = [2, 3]
     clearing_move = _full_move_sequence(perpendicular_axis, 200, move_steps[0])
     cleanup = _cleanup_after_limit_sequence(axis)
-    primary_move = _full_move_sequence(axis, position_to_move, move_steps[1])
+    primary_move = _full_move_sequence(axis, position_to_move, move_steps[1], relative)
 
     expected_commands = (
         [primary_move[0]] 
@@ -120,11 +126,15 @@ def test_move_to_axis_not_clear(mock_motor_controller, axis):
         FakeState.ClearAxisOnStop: perpendicular_axis},
         expected_commands)
 
-    motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
+    if relative:
+        motor.relative_move(position_to_move, LEGACY_AXIS_MAPPING[axis])
+    else:
+        motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
     test.assert_passed()
     
 @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.A])
-def test_move_to_axis_cannot_clear(mock_motor_controller, axis):
+@pytest.mark.parametrize("relative", [False, True])
+def test_move_to_axis_cannot_clear(mock_motor_controller, axis, relative):
     motor, _, _, _ = mock_motor_controller
     position_to_move = 15.5
     perpendicular_axis = PERPENDICULAR_AXIS[axis]
@@ -132,7 +142,7 @@ def test_move_to_axis_cannot_clear(mock_motor_controller, axis):
 
     clearing_move = _full_move_sequence(perpendicular_axis, 200, move_steps[0])
     cleanup = _cleanup_after_limit_sequence(axis)
-    primary_move = _full_move_sequence(axis, position_to_move, move_steps[1])
+    primary_move = _full_move_sequence(axis, position_to_move, move_steps[1], relative)
 
     expected_commands = (
         [primary_move[0]]
@@ -148,16 +158,20 @@ def test_move_to_axis_cannot_clear(mock_motor_controller, axis):
         expected_commands)
 
     with pytest.raises(FatalError):
-        motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
+        if relative:
+            motor.relative_move(position_to_move, LEGACY_AXIS_MAPPING[axis])
+        else:
+            motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
     test.assert_passed()
     
 @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.A])
-def test_move_to_axis_keyboard_interrupt(mock_motor_controller, axis):
+@pytest.mark.parametrize("relative", [False, True])
+def test_move_to_axis_keyboard_interrupt(mock_motor_controller, axis, relative):
     motor, _, _, _ = mock_motor_controller
     position_to_move = 15.5
     move_steps = [4, 3]
 
-    primary_move = _full_move_sequence(axis, position_to_move, move_steps[1])
+    primary_move = _full_move_sequence(axis, position_to_move, move_steps[1], relative)
     step_to_interrupt = 5
 
     expected_commands = (
@@ -176,6 +190,9 @@ def test_move_to_axis_keyboard_interrupt(mock_motor_controller, axis):
         expected_commands)
 
     with pytest.raises(KeyboardInterrupt):
-        motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
+        if relative:
+            motor.relative_move(position_to_move, LEGACY_AXIS_MAPPING[axis])
+        else:
+            motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
     test.assert_passed()
     

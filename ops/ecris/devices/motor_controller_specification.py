@@ -41,6 +41,10 @@ class Commands(StrEnum):
     def MOVE(axis: Axis, value: float):
         return f"{str(axis.name)}{value}"
 
+    @staticmethod
+    def RELATIVE_MOVE(axis: Axis, value: float):
+        return f"{str(axis.name)}/{value}"
+
 class Bit:
     IN_MOTION: int = 516
 
