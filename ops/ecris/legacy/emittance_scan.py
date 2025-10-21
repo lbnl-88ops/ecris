@@ -630,7 +630,7 @@ class Read_and_Analyze:
         binlength_position = (max(position)-min(position))/n
         binlength_momentum = (max(momentum)-min(momentum))/m
         plt.imshow(I,cmap="inferno", origin="lower", extent=(min(position)-binlength_position/2, max(position)+binlength_position/2, min(momentum)-binlength_momentum/2, max(momentum)+binlength_momentum/2))
-        plt.plot(x_e, x_prime_e,'r--', label ="$\epsilon_{rms}$ = "+f"{round(E_rms,4)} [mm mrad]")
+        plt.plot(x_e, x_prime_e,'r--', label =r"$\epsilon_{rms}$ = "+f"{round(E_rms,4)} [mm mrad]")
         plt.colorbar(label = "Current [nA]")
         plt.xlabel(f"Position {axis} [mm]")
         plt.ylabel(f"Momentum {axis}' [mrad]")
