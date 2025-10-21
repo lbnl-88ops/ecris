@@ -4,27 +4,11 @@ from logging import getLogger
 from typing import Any
 
 from ops.ecris.model.device import TelnetDevice
+from .motor_controller_specification import Commands
 
 _log = getLogger(__name__)
 
 class MotorController(TelnetDevice):
-
-    class Commands(StrEnum):
-        OPEN_PROGRAM0 = 'PROG0'
-        SET_RAMPING = "ACC 5 DEC 5 VEL 15 STP 100"
-
-    class Axis(Enum):
-        X = auto()
-        Y = auto()
-        Z = auto()
-        A = auto()
-
-    PERPENDICULAR_AXIS = {
-        Axis.X: Axis.Y,
-        Axis.Y: Axis.X,
-        Axis.Z: Axis.A,
-        Axis.A: Axis.Z
-    }
 
     def __init__(self, id: str = 'ACR74C', 
                  ip: str | None = None, 
@@ -55,5 +39,5 @@ class MotorController(TelnetDevice):
 
     async def _setup(self) -> None:
         self._prompt = 'P00>'
-        await self.send_command(MotorController.Commands.OPEN_PROGRAM0)
-        await self.send_command(MotorController.Commands.SET_RAMPING)
+        await self.send_command(Commands.OPEN_PROGRAM0)
+        await self.send_command(Commands.SET_RAMPING)

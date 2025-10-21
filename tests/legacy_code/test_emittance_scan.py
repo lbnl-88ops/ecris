@@ -1,7 +1,8 @@
 from ops.ecris.legacy.emittance_scan import Motor
 from tests.fakes import FakeMotorController
-from tests.fakes.fake_motor_controller import Axis, set_up_test, FakeState
-from ops.ecris.devices.motor_controller import MotorController
+from tests.fakes.fake_motor_controller import set_up_test, FakeState
+from ops.ecris.devices.motor_controller_specification import (
+    Axis, Commands, PERPENDICULAR_AXIS)
 
 from unittest.mock import MagicMock, patch, call
 
@@ -38,7 +39,7 @@ def test_motor_init(mock_motor_controller_no_reset):
     _, fake_controller, mock_telnet, mock_sleep = mock_motor_controller_no_reset
     expected_ip = '10.10.100.60'
     port = 5002
-    commands = ["PROG0", "ACC 5 DEC 5 VEL 15 STP 100"]
+    commands = [Commands.OPEN_PROGRAM0, Commands.SET_RAMPING]
 
     mock_telnet.Telnet.assert_called_once_with(expected_ip, port, timeout=3)
     assert fake_controller.decoded_log == commands
@@ -51,7 +52,7 @@ def test_motor_init(mock_motor_controller_no_reset):
 @pytest.mark.parametrize("expected_state", [True, False])
 def test_axis_clear_calculates_correct_bit_and_calls_send_command( 
     mock_motor_controller, input_axis, expected_state):
-    perpendicular_axis = MotorController.PERPENDICULAR_AXIS[input_axis]
+    perpendicular_axis = PERPENDICULAR_AXIS[input_axis]
 
     motor, fake_controller, _ , mock_sleep = mock_motor_controller
     expected_bit = 16128 + LEGACY_AXIS_MAPPING[perpendicular_axis] * 32

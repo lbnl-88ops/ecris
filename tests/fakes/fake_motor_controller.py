@@ -4,9 +4,7 @@ from enum import Enum, auto
 
 from unittest.mock import call
 
-from ops.ecris.devices.motor_controller import MotorController
-
-Axis = MotorController.Axis
+from ops.ecris.devices.motor_controller_specification import Axis
 
 class FakeMotorController:
     def __init__(self, unit_mode="mm", initial_positions=None):
