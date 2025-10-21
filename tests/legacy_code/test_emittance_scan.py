@@ -56,7 +56,7 @@ def test_axis_clear_calculates_correct_bit_and_calls_send_command(
 
     motor, fake_controller, _ , mock_sleep = mock_motor_controller
     expected_bit = 16128 + LEGACY_AXIS_MAPPING[perpendicular_axis] * 32
-    commands = [f"?BIT({expected_bit})"]
+    commands = [Commands.QUERY_BIT(expected_bit)]
 
     if not expected_state:
         test = set_up_test(mock_motor_controller, 
