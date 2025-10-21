@@ -83,7 +83,7 @@ def _cleanup_after_limit_sequence(axis: Axis):
            Commands.QUERY_BIT(Bit.IN_MOTION), 
            Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
 
-@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.Z])
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.A])
 def test_move_to(mock_motor_controller, axis):
     motor, _, _, _ = mock_motor_controller
     position_to_move = 15.5
@@ -97,7 +97,7 @@ def test_move_to(mock_motor_controller, axis):
     motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
     test.assert_passed()
     
-@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.Z])
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.A])
 def test_move_to_axis_not_clear(mock_motor_controller, axis):
     motor, _, _, _ = mock_motor_controller
     position_to_move = 15.5
@@ -123,7 +123,7 @@ def test_move_to_axis_not_clear(mock_motor_controller, axis):
     motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
     test.assert_passed()
     
-@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.Z])
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.A])
 def test_move_to_axis_cannot_clear(mock_motor_controller, axis):
     motor, _, _, _ = mock_motor_controller
     position_to_move = 15.5
@@ -148,6 +148,34 @@ def test_move_to_axis_cannot_clear(mock_motor_controller, axis):
         expected_commands)
 
     with pytest.raises(FatalError):
+        motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
+    test.assert_passed()
+    
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.A])
+def test_move_to_axis_keyboard_interrupt(mock_motor_controller, axis):
+    motor, _, _, _ = mock_motor_controller
+    position_to_move = 15.5
+    move_steps = [4, 3]
+
+    primary_move = _full_move_sequence(axis, position_to_move, move_steps[1])
+    step_to_interrupt = 5
+
+    expected_commands = (
+        primary_move[:step_to_interrupt]
+        + [
+            Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)),
+            Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)),
+            Commands.DRIVE_OFF(axis)
+        ])
+    
+    test = set_up_test(mock_motor_controller, {
+        FakeState.MotionSteps: move_steps,
+        FakeState.DecrementMotionOnCheck: True,
+        FakeState.InterruptAfterCommands: (step_to_interrupt, KeyboardInterrupt),
+        },
+        expected_commands)
+
+    with pytest.raises(KeyboardInterrupt):
         motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
     test.assert_passed()
     

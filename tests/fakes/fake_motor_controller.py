@@ -1,8 +1,8 @@
 from imaplib import Commands
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from enum import Enum, auto
 
-from unittest.mock import call
+from unittest.mock import call, MagicMock
 import pytest
 
 from ops.ecris.devices.motor_controller_specification import Axis
@@ -37,6 +37,7 @@ class FakeMotorController:
         self.motion_steps_remaining: List[int] = [0]
         self.decrement_motion_on_check: bool = False
         self.axis_clear_after_stop: Axis | None = None
+        self.exception_timer: Tuple[int, Exception] | None = None
 
     def post_init_reset(self):
         self.command_log = []
@@ -85,6 +86,13 @@ class FakeMotorController:
 
 
     def handle_command(self, raw_command):
+        if self.exception_timer is not None:
+            value, exception = self.exception_timer
+            if value == 0:
+                self.exception_timer = None
+                raise exception
+            else:
+                self.exception_timer = (value - 1, exception)
         self.command_log.append(raw_command)
         command = raw_command.decode('ascii').strip()
         command_return = ""
@@ -115,6 +123,7 @@ class FakeState(Enum):
     MotionSteps = auto()
     DecrementMotionOnCheck = auto()
     ClearAxisOnStop = auto()
+    InterruptAfterCommands = auto()
 
 class CheckTestPassed:
     def __init__(self, fake: FakeMotorController, mock_sleep, commands):
@@ -148,5 +157,7 @@ def set_up_test(setup_classes,
                 fake.decrement_motion_on_check = value
             case FakeState.ClearAxisOnStop:
                 fake.axis_clear_after_stop = value
+            case FakeState.InterruptAfterCommands:
+                fake.exception_timer = value
     return CheckTestPassed(fake, mock_sleep, commands)
     

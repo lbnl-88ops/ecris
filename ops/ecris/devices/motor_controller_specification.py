@@ -24,6 +24,10 @@ class Commands(StrEnum):
     @staticmethod
     def CLEAR_BIT(bit: int) -> str:
         return f"CLR BIT({bit})"
+    
+    @staticmethod
+    def SET_BIT(bit: int) -> str:
+        return f"SET BIT({bit})"
 
     @staticmethod
     def DRIVE_ON(axis: Axis):
