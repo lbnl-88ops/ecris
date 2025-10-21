@@ -49,30 +49,7 @@ def test_motor_init(mock_motor_controller_no_reset):
     mock_sleep.assert_has_calls([call(0.07)]*2)
     assert mock_sleep.call_count == len(commands)
  
-@pytest.mark.parametrize("input_axis", ALL_AXES)
-@pytest.mark.parametrize("expected_state", [True, False])
-def test_axis_clear_calculates_correct_bit_and_calls_send_command( 
-    mock_motor_controller, input_axis, expected_state):
-    perpendicular_axis = PERPENDICULAR_AXIS[input_axis]
-
-    motor, fake_controller, _ , mock_sleep = mock_motor_controller
-    commands = [Commands.QUERY_BIT(Bit.AXIS_CLEAR(input_axis))]
-
-    if not expected_state:
-        test = set_up_test(mock_motor_controller, 
-                                 {FakeState.AxisNotClear: perpendicular_axis},
-                                 commands)
-    else:
-        test = set_up_test(mock_motor_controller, {}, commands)
-
-    state = motor.axis_clear(LEGACY_AXIS_MAPPING[input_axis])
-    assert state == expected_state
-    test.assert_passed()
-
-
-@pytest.mark.parametrize("axis", ALL_AXES)
-@pytest.mark.parametrize("relative", [False, True])
-class TestMoveSequences:
+class MoveSequences:
     @staticmethod
     def _full_move_sequence(axis: Axis, position_to_move: float, move_steps: int,
                             relative=False):
@@ -91,6 +68,45 @@ class TestMoveSequences:
             Commands.QUERY_BIT(Bit.IN_MOTION), 
             Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
 
+@pytest.mark.parametrize("axis", ALL_AXES)
+class TestAllAxes(MoveSequences):
+    @pytest.mark.parametrize("expected_state", [True, False])
+    def test_axis_clear_calculates_correct_bit_and_calls_send_command( 
+        self, mock_motor_controller, axis, expected_state):
+        perpendicular_axis = PERPENDICULAR_AXIS[axis]
+
+        motor, fake_controller, _ , mock_sleep = mock_motor_controller
+        commands = [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
+
+        if not expected_state:
+            test = set_up_test(mock_motor_controller, 
+                                    {FakeState.AxisNotClear: perpendicular_axis},
+                                    commands)
+        else:
+            test = set_up_test(mock_motor_controller, {}, commands)
+
+        state = motor.axis_clear(LEGACY_AXIS_MAPPING[axis])
+        assert state == expected_state
+        test.assert_passed()
+
+    def test_move_out(self, mock_motor_controller, axis):
+        motor, _, _, _ = mock_motor_controller
+        move_steps = 3
+        expected_commands = self._full_move_sequence(axis, 200, move_steps) + [
+            Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)),
+            Commands.DRIVE_OFF(axis)
+        ]
+        test = set_up_test(mock_motor_controller, {
+            FakeState.MotionSteps: move_steps,
+            FakeState.DecrementMotionOnCheck: True,}, expected_commands)
+
+        motor.move_out(LEGACY_AXIS_MAPPING[axis])
+
+        test.assert_passed()
+        
+@pytest.mark.parametrize("axis", ALL_AXES)
+@pytest.mark.parametrize("relative", [False, True])
+class TestMoveSequencesWithRelative(MoveSequences):
     def test_move_to(self, mock_motor_controller, axis, relative):
         motor, _, _, _ = mock_motor_controller
         position_to_move = 15.5
