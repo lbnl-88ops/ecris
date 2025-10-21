@@ -6,6 +6,7 @@ from unittest.mock import call, MagicMock
 import pytest
 
 from ops.ecris.devices.motor_controller_specification import Axis
+from ops.ecris.legacy.mappings import LEGACY_AXIS_MAPPING
 
 class FakeMotorController:
     def __init__(self, unit_mode="mm", initial_positions=None):
@@ -120,6 +121,7 @@ class FakeMotorController:
 
 class FakeState(Enum):
     AxisNotClear = auto()
+    AxisCentered = auto()
     MotionSteps = auto()
     DecrementMotionOnCheck = auto()
     ClearAxisOnStop = auto()
@@ -136,8 +138,6 @@ class CheckTestPassed:
         assert self._fake.buffer_clear
         self._mock_sleep.assert_has_calls([call(0.07)]*len(self._commands))
         assert self._mock_sleep.call_count == len(self._commands)
-
-        
 
 def set_up_test(setup_classes,
                states: Dict[FakeState, Any],
@@ -159,5 +159,7 @@ def set_up_test(setup_classes,
                 fake.axis_clear_after_stop = value
             case FakeState.InterruptAfterCommands:
                 fake.exception_timer = value
+            case FakeState.AxisCentered:
+                motor.centered[LEGACY_AXIS_MAPPING[value]] = True
     return CheckTestPassed(fake, mock_sleep, commands)
     

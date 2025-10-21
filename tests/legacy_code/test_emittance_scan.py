@@ -1,20 +1,17 @@
 from ops.ecris.legacy.emittance_scan import FatalError, Motor
+from ops.ecris.legacy.mappings import LEGACY_AXIS_MAPPING
 from tests.fakes import FakeMotorController
 from tests.fakes.fake_motor_controller import set_up_test, FakeState
 from ops.ecris.devices.motor_controller_specification import (
-    Axis, Commands, PERPENDICULAR_AXIS, Bit)
+    Axis, Commands, PERPENDICULAR_AXIS, Bit,
+    MID_POINT_OFFSETS)
 
 from unittest.mock import MagicMock, patch, call
 
 import pytest
 
 MODULE = 'ops.ecris.legacy.emittance_scan.'
-LEGACY_AXIS_MAPPING = {
-    Axis.X: 0,
-    Axis.Y: 1,
-    Axis.Z: 2,
-    Axis.A: 3
-}
+
 ALL_AXES = [Axis.X, Axis.Y, Axis.Z, Axis.A]
 
 @pytest.fixture
@@ -62,6 +59,12 @@ class MoveSequences:
         return expected_commands
 
     @staticmethod
+    def _move_out_sequence(axis: Axis, move_steps: int):
+        return MoveSequences._full_move_sequence(axis, 200, move_steps) + [
+            Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)),
+            Commands.DRIVE_OFF(axis)] 
+
+    @staticmethod
     def _cleanup_after_limit_sequence(axis: Axis):
         return [Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)), 
             Commands.DRIVE_OFF(axis),
@@ -92,16 +95,112 @@ class TestAllAxes(MoveSequences):
     def test_move_out(self, mock_motor_controller, axis):
         motor, _, _, _ = mock_motor_controller
         move_steps = 3
-        expected_commands = self._full_move_sequence(axis, 200, move_steps) + [
-            Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)),
-            Commands.DRIVE_OFF(axis)
-        ]
+        expected_commands = self._move_out_sequence(axis, move_steps)
         test = set_up_test(mock_motor_controller, {
             FakeState.MotionSteps: move_steps,
             FakeState.DecrementMotionOnCheck: True,}, expected_commands)
 
         motor.move_out(LEGACY_AXIS_MAPPING[axis])
 
+        test.assert_passed()
+
+    def test_centering(self, mock_motor_controller, axis):
+        motor, _, _, _ = mock_motor_controller
+        move_steps = [3, 4]
+
+        expected_commands = (
+            [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] 
+            + self._full_move_sequence(axis, -200, move_steps[0])
+            + [Commands.QUERY_BIT(Bit.IN_MOTION)]
+            + self._full_move_sequence(axis, MID_POINT_OFFSETS[axis], 
+                                       move_steps[1], relative=True)
+            + [Commands.QUERY_BIT(Bit.IN_MOTION)]
+            + [Commands.RESET_AXIS(axis),
+               Commands.DRIVE_OFF(axis)])
+
+        test = set_up_test(mock_motor_controller, {
+            FakeState.DecrementMotionOnCheck: True,
+            FakeState.MotionSteps: move_steps,
+            }, expected_commands)
+
+        motor.centering(LEGACY_AXIS_MAPPING[axis])
+        test.assert_passed()
+        for i, centered in enumerate(motor.centered):
+            if i == LEGACY_AXIS_MAPPING[axis]:
+                assert centered
+            else:
+                assert not centered
+
+    def test_centering_already_centered(self, mock_motor_controller, axis):
+        motor, _, _, _ = mock_motor_controller
+        move_steps = [3]
+        motor.centered[LEGACY_AXIS_MAPPING[axis]] = True
+
+        expected_commands = (
+            [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] 
+            + self._full_move_sequence(axis, 0, move_steps[0])
+        )
+
+        test = set_up_test(mock_motor_controller, {
+            FakeState.DecrementMotionOnCheck: True,
+            FakeState.MotionSteps: move_steps,
+            }, expected_commands)
+
+        motor.centering(LEGACY_AXIS_MAPPING[axis])
+        test.assert_passed()
+
+    def test_centering_axis_not_clear(self, mock_motor_controller, axis):
+        motor, _, _, _ = mock_motor_controller
+        move_steps = [2, 3, 4]
+        perpendicular_axis = PERPENDICULAR_AXIS[axis]
+
+        expected_commands = (
+            [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] 
+            + self._move_out_sequence(PERPENDICULAR_AXIS[axis], move_steps[0])
+            + [Commands.QUERY_BIT(Bit.IN_MOTION),
+               Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
+            + self._full_move_sequence(axis, -200, move_steps[1])
+            + [Commands.QUERY_BIT(Bit.IN_MOTION)]
+            + self._full_move_sequence(axis, MID_POINT_OFFSETS[axis], 
+                                       move_steps[2], relative=True)
+            + [Commands.QUERY_BIT(Bit.IN_MOTION)]
+            + [Commands.RESET_AXIS(axis),
+               Commands.DRIVE_OFF(axis)])
+
+        test = set_up_test(mock_motor_controller, {
+            FakeState.DecrementMotionOnCheck: True,
+            FakeState.MotionSteps: move_steps,
+            FakeState.AxisNotClear: perpendicular_axis,
+            FakeState.ClearAxisOnStop: perpendicular_axis,
+            }, expected_commands)
+
+        motor.centering(LEGACY_AXIS_MAPPING[axis])
+        test.assert_passed()
+        for i, centered in enumerate(motor.centered):
+            if i == LEGACY_AXIS_MAPPING[axis]:
+                assert centered
+            else:
+                assert not centered
+
+    def test_centering_axis_cant_clear(self, mock_motor_controller, axis):
+        motor, _, _, _ = mock_motor_controller
+        move_steps = [2, 3, 4]
+        perpendicular_axis = PERPENDICULAR_AXIS[axis]
+
+        expected_commands = (
+            [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] 
+            + self._move_out_sequence(PERPENDICULAR_AXIS[axis], move_steps[0])
+            + [Commands.QUERY_BIT(Bit.IN_MOTION),
+               Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis)),
+               Commands.DRIVE_OFF(axis)])
+
+        test = set_up_test(mock_motor_controller, {
+            FakeState.DecrementMotionOnCheck: True,
+            FakeState.MotionSteps: move_steps,
+            FakeState.AxisNotClear: perpendicular_axis,
+            }, expected_commands)
+        with pytest.raises(FatalError):
+            motor.centering(LEGACY_AXIS_MAPPING[axis])
         test.assert_passed()
         
 @pytest.mark.parametrize("axis", ALL_AXES)

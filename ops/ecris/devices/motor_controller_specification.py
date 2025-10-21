@@ -13,6 +13,11 @@ PERPENDICULAR_AXIS = {
     Axis.A: Axis.Z
 }
 
+MID_POINT_OFFSETS = {Axis.X: 30.18, 
+                     Axis.Y: 36.50, 
+                     Axis.Z: 31.75, 
+                     Axis.A: 31.75} 
+
 class Commands(StrEnum):
     OPEN_PROGRAM0 = 'PROG0'
     SET_RAMPING = "ACC 5 DEC 5 VEL 15 STP 100"
@@ -44,6 +49,10 @@ class Commands(StrEnum):
     @staticmethod
     def RELATIVE_MOVE(axis: Axis, value: float):
         return f"{str(axis.name)}/{value}"
+
+    @staticmethod
+    def RESET_AXIS(axis: Axis):
+        return f"RES AXIS{str(axis.value)}"
 
 class Bit:
     IN_MOTION: int = 516
