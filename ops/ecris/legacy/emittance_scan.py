@@ -290,7 +290,8 @@ class Motor:
         None.
         """
         if not self.axis_clear(axis):
-            self.move_to(200, [0,1,3,2][axis])  #make big enough move, so that motor will travel to positive EOT limit switch
+            # I think this one is wrong too
+            self.move_to(200, [1,0,3,2][axis])  #make big enough move, so that motor will travel to positive EOT limit switch
             self.send_command(f"CLR BIT({8467 + axis * 32})") #clear kill all moves (hitting limit switch sets kill all moves request)
             self.send_command(f"DRIVE OFF {self.axis_names[axis]}")
             while self.send_command("?BIT(516)"): #"In Motion"-Bit for Master 0
@@ -304,10 +305,15 @@ class Motor:
         try:
             while self.send_command("?BIT(516)"): #"In Motion"-Bit for Master 0
                 continue
-            self.send_command(f"DRIVE OFF {self.axis_names[axis]}")
+            # Removed to be in line with move function
+            # self.send_command(f"DRIVE OFF {self.axis_names[axis]}")
         except KeyboardInterrupt:
             self.send_command(f"SET BIT({8467 + axis * 32})")
             self.send_command(f"CLR BIT({8467 + axis * 32})")
+            # ADDED FROM LEGACY CODE ~~~~
+            self.send_command(f"DRIVE OFF {self.axis_names[axis]}")
+            raise KeyboardInterrupt()
+            # END ADDED
         self.send_command(f"DRIVE OFF {self.axis_names[axis]}")
 
 
