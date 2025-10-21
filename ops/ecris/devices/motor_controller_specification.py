@@ -1,10 +1,10 @@
 from enum import Enum, auto, StrEnum
 
 class Axis(Enum):
-    X = auto()
-    Y = auto()
-    Z = auto()
-    A = auto()
+    X = 0
+    Y = 1
+    Z = 2
+    A = 3
 
 PERPENDICULAR_AXIS = {
     Axis.X: Axis.Y,
@@ -28,3 +28,14 @@ class Commands(StrEnum):
     @staticmethod
     def DRIVE_OFF(axis: Axis):
         return f"DRIVE OFF {str(axis.name)}"
+
+    @staticmethod
+    def MOVE(axis: Axis, value: float):
+        return f"{str(axis.name)}{value}"
+
+class Bit:
+    IN_MOTION: int = 516
+
+    @staticmethod
+    def axis_clear(axis: Axis) -> int:
+        return 16128 + axis.value * 32

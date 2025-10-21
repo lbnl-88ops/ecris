@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 from enum import Enum, auto
 
 from unittest.mock import call
+import pytest
 
 from ops.ecris.devices.motor_controller_specification import Axis
 
@@ -31,6 +32,7 @@ class FakeMotorController:
         self._to_buffer('Unkown banner.')
         self.command_log = []
         self._motion_steps_remaining: int = 0
+        self._decrement_motion_on_check: bool = False
 
     def post_init_reset(self):
         self.command_log = []
@@ -83,12 +85,14 @@ class FakeMotorController:
                     command_return = int(self.axis_clear_states[Axis.A])
                 case 516:
                     command_return = int(self._motion_steps_remaining > 0)
-                    self._motion_steps_remaining -= 1
+                    if self._decrement_motion_on_check:
+                        self._motion_steps_remaining -= 1
 
         self._to_buffer(command + '\r\n' + str(command_return))
 
 class FakeState(Enum):
     AxisNotClear = auto()
+    MotionSteps = auto()
 
 class CheckTestPassed:
     def __init__(self, fake: FakeMotorController, mock_sleep, commands):
@@ -97,7 +101,7 @@ class CheckTestPassed:
         self._commands = commands
 
     def assert_passed(self):
-        assert self._fake.decoded_log == self._commands
+        assert self._fake.decoded_log == self._commands, f"{self._fake.decoded_log} != {self._commands}"
         assert self._fake.buffer_clear
         self._mock_sleep.assert_has_calls([call(0.07)]*len(self._commands))
         assert self._mock_sleep.call_count == len(self._commands)
@@ -112,5 +116,8 @@ def set_up_test(setup_classes,
         match state:
             case FakeState.AxisNotClear:
                 fake.axis_clear_states[value] = False
+            case FakeState.MotionSteps:
+                fake.set_motion_steps(value)
+                fake._decrement_motion_on_check = True
     return CheckTestPassed(fake, mock_sleep, commands)
     

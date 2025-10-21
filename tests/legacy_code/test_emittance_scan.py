@@ -2,7 +2,7 @@ from ops.ecris.legacy.emittance_scan import Motor
 from tests.fakes import FakeMotorController
 from tests.fakes.fake_motor_controller import set_up_test, FakeState
 from ops.ecris.devices.motor_controller_specification import (
-    Axis, Commands, PERPENDICULAR_AXIS)
+    Axis, Commands, PERPENDICULAR_AXIS, Bit)
 
 from unittest.mock import MagicMock, patch, call
 
@@ -55,8 +55,7 @@ def test_axis_clear_calculates_correct_bit_and_calls_send_command(
     perpendicular_axis = PERPENDICULAR_AXIS[input_axis]
 
     motor, fake_controller, _ , mock_sleep = mock_motor_controller
-    expected_bit = 16128 + LEGACY_AXIS_MAPPING[perpendicular_axis] * 32
-    commands = [Commands.QUERY_BIT(expected_bit)]
+    commands = [Commands.QUERY_BIT(Bit.axis_clear(perpendicular_axis))]
 
     if not expected_state:
         test = set_up_test(mock_motor_controller, 
@@ -69,25 +68,23 @@ def test_axis_clear_calculates_correct_bit_and_calls_send_command(
     assert state == expected_state
     test.assert_passed()
 
-# def test_move_to(mock_motor_controller):
-#     motor, fake_controller, _, mock_sleep = mock_motor_controller
-#     # fake_controller.axis_clear_states = [True, True, True, True]
-#     position_to_move = 15.5
-#     axis_to_move = 0 # X
-#     fake_controller.set_motion_steps(2)
 
-#     motor.move_to(position_to_move, axis_to_move)
-#     expected_bit = 16128 + 32
-
-#     expected_commands = [
-#         f"?BIT({expected_bit})",
-#         "DRIVE ON X",
-#         f"X{position_to_move}",
-#         "?BIT(516)", # First check, returns 1 (in motion)
-#         "?BIT(516)", # Second check, returns 1 (in motion)
-#         "?BIT(516)", # Third check, returns 0 (motion complete)
-#         "DRIVE OFF X"
-#     ]
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.Z])
+def test_move_to(mock_motor_controller, axis):
+    motor, _, _, _ = mock_motor_controller
+    position_to_move = 15.5
+    perpendicular_axis = PERPENDICULAR_AXIS[axis]
+    move_steps: int = 2
+    expected_commands = ([
+        Commands.QUERY_BIT(Bit.axis_clear(perpendicular_axis)), 
+        Commands.DRIVE_ON(axis), 
+        Commands.MOVE(axis, position_to_move)] 
+        + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (move_steps + 1)
+        + [Commands.DRIVE_OFF(axis)])
     
-#     assert fake_controller.decoded_log == expected_commands
-#     assert fake_controller.buffer_clear
+    test = set_up_test(mock_motor_controller, {
+        FakeState.MotionSteps: move_steps}, expected_commands)
+
+    motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
+    test.assert_passed()
+    
