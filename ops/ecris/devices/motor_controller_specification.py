@@ -22,6 +22,10 @@ class Commands(StrEnum):
         return f"?BIT({bit})"
 
     @staticmethod
+    def CLEAR_BIT(bit: int) -> str:
+        return f"CLR BIT({bit})"
+
+    @staticmethod
     def DRIVE_ON(axis: Axis):
         return f"DRIVE ON {str(axis.name)}"
 
@@ -37,5 +41,10 @@ class Bit:
     IN_MOTION: int = 516
 
     @staticmethod
-    def axis_clear(axis: Axis) -> int:
-        return 16128 + axis.value * 32
+    def AXIS_CLEAR(axis: Axis) -> int:
+        axis_to_check = PERPENDICULAR_AXIS[axis]
+        return 16128 + axis_to_check.value * 32
+
+    @staticmethod
+    def KILL_ALL_MOVES(axis: Axis) -> int:
+        return 8467 + axis.value * 32

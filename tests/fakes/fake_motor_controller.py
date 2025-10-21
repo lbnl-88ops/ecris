@@ -31,8 +31,12 @@ class FakeMotorController:
         self._buffer = []
         self._to_buffer('Unkown banner.')
         self.command_log = []
-        self._motion_steps_remaining: int = 0
-        self._decrement_motion_on_check: bool = False
+        self._current_motion_steps: int = 0
+
+        # Test parameters
+        self.motion_steps_remaining: List[int] = [0]
+        self.decrement_motion_on_check: bool = False
+        self.axis_clear_after_stop: Axis | None = None
 
     def post_init_reset(self):
         self.command_log = []
@@ -50,9 +54,8 @@ class FakeMotorController:
     def decoded_log(self) -> List[str]:
         return [s.decode('ascii').strip() for s in self.command_log]
 
-    def set_motion_steps(self, steps: int):
-        self._motion_steps_remaining = steps
-
+    def set_motion_steps(self, steps: List[int]):
+        self.motion_steps_remaining = steps
 
     def read_buffer(self, prompt = None) -> bytes:
         end = len(self._buffer)
@@ -64,6 +67,22 @@ class FakeMotorController:
         read_buffer = b''.join(self._buffer[0:end + 1])
         del self._buffer[0:end + 1]
         return read_buffer
+
+    def _move(self) -> None:
+        if self.decrement_motion_on_check and self._current_motion_steps > 0:
+            self._current_motion_steps -= 1
+            if self._current_motion_steps == 0 and self.axis_clear_after_stop is not None:
+                self.axis_clear_states[self.axis_clear_after_stop] = True
+
+    def _put_in_motion(self) -> None:
+        if self._current_motion_steps == 0:
+            if self.motion_steps_remaining:
+                self._current_motion_steps = self.motion_steps_remaining.pop(0)
+            else:
+                raise RuntimeError
+        else:
+            raise RuntimeError
+
 
     def handle_command(self, raw_command):
         self.command_log.append(raw_command)
@@ -84,15 +103,18 @@ class FakeMotorController:
                 case 16224:
                     command_return = int(self.axis_clear_states[Axis.A])
                 case 516:
-                    command_return = int(self._motion_steps_remaining > 0)
-                    if self._decrement_motion_on_check:
-                        self._motion_steps_remaining -= 1
+                    command_return = int(self._current_motion_steps > 0)
+                    self._move()
+        elif command.startswith("X") or command.startswith("Y") or command.startswith("Z") or command.startswith("A"): # move command
+            self._put_in_motion()
 
         self._to_buffer(command + '\r\n' + str(command_return))
 
 class FakeState(Enum):
     AxisNotClear = auto()
     MotionSteps = auto()
+    DecrementMotionOnCheck = auto()
+    ClearAxisOnStop = auto()
 
 class CheckTestPassed:
     def __init__(self, fake: FakeMotorController, mock_sleep, commands):
@@ -111,13 +133,20 @@ class CheckTestPassed:
 def set_up_test(setup_classes,
                states: Dict[FakeState, Any],
                commands):
+    fake: FakeMotorController
     motor, fake, mock_connection, mock_sleep = setup_classes
     for state, value in states.items():
         match state:
             case FakeState.AxisNotClear:
                 fake.axis_clear_states[value] = False
             case FakeState.MotionSteps:
-                fake.set_motion_steps(value)
-                fake._decrement_motion_on_check = True
+                if isinstance(value, int):
+                    fake.set_motion_steps([value])
+                else:
+                    fake.set_motion_steps(value)
+            case FakeState.DecrementMotionOnCheck:
+                fake.decrement_motion_on_check = value
+            case FakeState.ClearAxisOnStop:
+                fake.axis_clear_after_stop = value
     return CheckTestPassed(fake, mock_sleep, commands)
     

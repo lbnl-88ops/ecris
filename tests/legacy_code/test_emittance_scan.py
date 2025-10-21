@@ -55,7 +55,7 @@ def test_axis_clear_calculates_correct_bit_and_calls_send_command(
     perpendicular_axis = PERPENDICULAR_AXIS[input_axis]
 
     motor, fake_controller, _ , mock_sleep = mock_motor_controller
-    commands = [Commands.QUERY_BIT(Bit.axis_clear(perpendicular_axis))]
+    commands = [Commands.QUERY_BIT(Bit.AXIS_CLEAR(input_axis))]
 
     if not expected_state:
         test = set_up_test(mock_motor_controller, 
@@ -68,22 +68,52 @@ def test_axis_clear_calculates_correct_bit_and_calls_send_command(
     assert state == expected_state
     test.assert_passed()
 
+def move_commands(axis: Axis, position_to_move: float, move_steps: int):
+    expected_commands = ([
+        Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis)), 
+        Commands.DRIVE_ON(axis), 
+        Commands.MOVE(axis, position_to_move)] 
+        + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (move_steps + 1)
+        + [Commands.DRIVE_OFF(axis)])
+    return expected_commands
+
 
 @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.Z])
 def test_move_to(mock_motor_controller, axis):
     motor, _, _, _ = mock_motor_controller
     position_to_move = 15.5
-    perpendicular_axis = PERPENDICULAR_AXIS[axis]
     move_steps: int = 2
-    expected_commands = ([
-        Commands.QUERY_BIT(Bit.axis_clear(perpendicular_axis)), 
-        Commands.DRIVE_ON(axis), 
-        Commands.MOVE(axis, position_to_move)] 
-        + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (move_steps + 1)
-        + [Commands.DRIVE_OFF(axis)])
+    expected_commands = move_commands(axis, position_to_move, move_steps)
     
     test = set_up_test(mock_motor_controller, {
-        FakeState.MotionSteps: move_steps}, expected_commands)
+        FakeState.MotionSteps: move_steps,
+        FakeState.DecrementMotionOnCheck: True}, expected_commands)
+
+    motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
+    test.assert_passed()
+    
+@pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z, Axis.Z])
+def test_move_to_axis_not_clear(mock_motor_controller, axis):
+    motor, _, _, _ = mock_motor_controller
+    position_to_move = 15.5
+    perpendicular_axis = PERPENDICULAR_AXIS[axis]
+    move_steps = [2, 3]
+
+    expected_commands = (
+        [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
+        + move_commands(perpendicular_axis, 200, move_steps[0])
+        + [Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)), 
+           Commands.DRIVE_OFF(axis),
+           Commands.QUERY_BIT(Bit.IN_MOTION), 
+           Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
+        + move_commands(axis, position_to_move, move_steps[1])[1:])
+    
+    test = set_up_test(mock_motor_controller, {
+        FakeState.AxisNotClear: perpendicular_axis,
+        FakeState.MotionSteps: move_steps,
+        FakeState.DecrementMotionOnCheck: True,
+        FakeState.ClearAxisOnStop: perpendicular_axis},
+        expected_commands)
 
     motor.move_to(position_to_move, LEGACY_AXIS_MAPPING[axis])
     test.assert_passed()
