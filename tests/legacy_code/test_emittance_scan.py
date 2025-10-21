@@ -48,28 +48,36 @@ def test_motor_init(mock_motor_controller_no_reset):
  
 class MoveSequences:
     @staticmethod
-    def _full_move_sequence(axis: Axis, position_to_move: float, move_steps: int,
-                            relative=False):
+    def _full_move_sequence(axis: Axis, 
+                            position_to_move: float, 
+                            move_steps: int,
+                            relative=False,
+                            coastdown_steps: int = 0):
         expected_commands = ([
             Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis)), 
             Commands.DRIVE_ON(axis), 
             Commands.RELATIVE_MOVE(axis, position_to_move) if relative else Commands.MOVE(axis, position_to_move)]
             + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (move_steps + 1)
-            + [Commands.DRIVE_OFF(axis)])
+            + [Commands.DRIVE_OFF(axis)]
+            + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (coastdown_steps + 1 
+                                                     if coastdown_steps > 0 else 0))
         return expected_commands
 
     @staticmethod
-    def _move_out_sequence(axis: Axis, move_steps: int):
-        return MoveSequences._full_move_sequence(axis, 200, move_steps) + [
+    def _move_out_sequence(axis: Axis, move_steps: int, coastdown_steps: int = 0):
+        return (MoveSequences._full_move_sequence(axis, 200, move_steps) + [
             Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)),
             Commands.DRIVE_OFF(axis)] 
+            + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (1 + coastdown_steps 
+                                                     if coastdown_steps > 0 else 0))
 
     @staticmethod
-    def _cleanup_after_limit_sequence(axis: Axis):
-        return [Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)), 
-            Commands.DRIVE_OFF(axis),
-            Commands.QUERY_BIT(Bit.IN_MOTION), 
-            Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
+    def _cleanup_after_limit_sequence(axis: Axis,
+                                      coastdown_steps: int = 0):
+        return (
+            [Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)), Commands.DRIVE_OFF(axis)]
+            + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (coastdown_steps + 1)
+            + [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))])
 
 @pytest.mark.parametrize("axis", ALL_AXES)
 class TestAllAxes(MoveSequences):
@@ -107,20 +115,22 @@ class TestAllAxes(MoveSequences):
     def test_centering(self, mock_motor_controller, axis):
         motor, _, _, _ = mock_motor_controller
         move_steps = [3, 4]
+        coastdown = [1, 2]
 
         expected_commands = (
             [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] 
-            + self._full_move_sequence(axis, -200, move_steps[0])
-            + [Commands.QUERY_BIT(Bit.IN_MOTION)]
+            + self._full_move_sequence(axis, -200, move_steps[0], 
+                                       coastdown_steps=coastdown[0])
             + self._full_move_sequence(axis, MID_POINT_OFFSETS[axis], 
-                                       move_steps[1], relative=True)
-            + [Commands.QUERY_BIT(Bit.IN_MOTION)]
+                                       move_steps[1], relative=True,
+                                       coastdown_steps = coastdown[1])
             + [Commands.RESET_AXIS(axis),
                Commands.DRIVE_OFF(axis)])
 
         test = set_up_test(mock_motor_controller, {
             FakeState.DecrementMotionOnCheck: True,
             FakeState.MotionSteps: move_steps,
+            FakeState.CoastDownSteps: coastdown,
             }, expected_commands)
 
         motor.centering(LEGACY_AXIS_MAPPING[axis])
@@ -151,19 +161,20 @@ class TestAllAxes(MoveSequences):
 
     def test_centering_axis_not_clear(self, mock_motor_controller, axis):
         motor, _, _, _ = mock_motor_controller
-        move_steps = [2, 3, 4]
+        move_steps = [4, 5, 6]
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
+        coastdown = [1, 2, 3]
 
         expected_commands = (
             [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] 
-            + self._move_out_sequence(PERPENDICULAR_AXIS[axis], move_steps[0])
-            + [Commands.QUERY_BIT(Bit.IN_MOTION),
-               Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
-            + self._full_move_sequence(axis, -200, move_steps[1])
-            + [Commands.QUERY_BIT(Bit.IN_MOTION)]
+            + self._move_out_sequence(PERPENDICULAR_AXIS[axis], move_steps[0],
+                                      coastdown[0])
+            + [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
+            + self._full_move_sequence(axis, -200, move_steps[1], 
+                                       coastdown_steps=coastdown[1])
             + self._full_move_sequence(axis, MID_POINT_OFFSETS[axis], 
-                                       move_steps[2], relative=True)
-            + [Commands.QUERY_BIT(Bit.IN_MOTION)]
+                                       move_steps[2], relative=True, 
+                                       coastdown_steps=coastdown[2])
             + [Commands.RESET_AXIS(axis),
                Commands.DRIVE_OFF(axis)])
 
@@ -172,6 +183,7 @@ class TestAllAxes(MoveSequences):
             FakeState.MotionSteps: move_steps,
             FakeState.AxisNotClear: perpendicular_axis,
             FakeState.ClearAxisOnStop: perpendicular_axis,
+            FakeState.CoastDownSteps: coastdown
             }, expected_commands)
 
         motor.centering(LEGACY_AXIS_MAPPING[axis])
@@ -225,8 +237,9 @@ class TestMoveSequencesWithRelative(MoveSequences):
         position_to_move = 15.5
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
         move_steps = [2, 3]
+        coastdown_steps = [1]
         clearing_move = self._full_move_sequence(perpendicular_axis, 200, move_steps[0])
-        cleanup = self._cleanup_after_limit_sequence(axis)
+        cleanup = self._cleanup_after_limit_sequence(axis, coastdown_steps=coastdown_steps[0])
         primary_move = self._full_move_sequence(axis, position_to_move, move_steps[1], relative)
 
         expected_commands = (
@@ -239,7 +252,8 @@ class TestMoveSequencesWithRelative(MoveSequences):
             FakeState.AxisNotClear: perpendicular_axis,
             FakeState.MotionSteps: move_steps,
             FakeState.DecrementMotionOnCheck: True,
-            FakeState.ClearAxisOnStop: perpendicular_axis},
+            FakeState.ClearAxisOnStop: perpendicular_axis,
+            FakeState.CoastDownSteps: coastdown_steps},
             expected_commands)
 
         action_to_perform = motor.relative_move if relative else motor.move_to

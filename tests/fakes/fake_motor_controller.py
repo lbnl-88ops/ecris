@@ -36,6 +36,7 @@ class FakeMotorController:
 
         # Test parameters
         self.motion_steps_remaining: List[int] = [0]
+        self.coastdown_steps_remaining: List[int] = []
         self.decrement_motion_on_check: bool = False
         self.axis_clear_after_stop: Axis | None = None
         self.exception_timer: Tuple[int, Exception] | None = None
@@ -73,13 +74,15 @@ class FakeMotorController:
     def _move(self) -> None:
         if self.decrement_motion_on_check and self._current_motion_steps > 0:
             self._current_motion_steps -= 1
-            if self._current_motion_steps == 0 and self.axis_clear_after_stop is not None:
-                self.axis_clear_states[self.axis_clear_after_stop] = True
+            if self._current_motion_steps == 0:
+                if self.axis_clear_after_stop is not None:
+                    self.axis_clear_states[self.axis_clear_after_stop] = True
 
     def _put_in_motion(self) -> None:
         if self._current_motion_steps == 0:
             if self.motion_steps_remaining:
                 self._current_motion_steps = self.motion_steps_remaining.pop(0)
+                self.in_normal_motion = True
             else:
                 raise RuntimeError
         else:
@@ -112,10 +115,14 @@ class FakeMotorController:
                 case 16224:
                     command_return = int(self.axis_clear_states[Axis.A])
                 case 516:
+                    print('In motion queried')
                     command_return = int(self._current_motion_steps > 0)
                     self._move()
         elif command.startswith("X") or command.startswith("Y") or command.startswith("Z") or command.startswith("A"): # move command
             self._put_in_motion()
+        elif command.startswith("DRIVE OFF"):
+            if self.coastdown_steps_remaining:
+                self._current_motion_steps = self.coastdown_steps_remaining.pop(0)
 
         self._to_buffer(command + '\r\n' + str(command_return))
 
@@ -123,6 +130,7 @@ class FakeState(Enum):
     AxisNotClear = auto()
     AxisCentered = auto()
     MotionSteps = auto()
+    CoastDownSteps = auto()
     DecrementMotionOnCheck = auto()
     ClearAxisOnStop = auto()
     InterruptAfterCommands = auto()
@@ -161,5 +169,7 @@ def set_up_test(setup_classes,
                 fake.exception_timer = value
             case FakeState.AxisCentered:
                 motor.centered[LEGACY_AXIS_MAPPING[value]] = True
+            case FakeState.CoastDownSteps:
+                fake.coastdown_steps_remaining = value
     return CheckTestPassed(fake, mock_sleep, commands)
     
