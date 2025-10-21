@@ -15,13 +15,13 @@ class FakeMotorController:
         else:
             self._unit_distance = -1
 
-        self.in_motion = False
         self.axis_clear_states = [True, True, True, True] # Default to clear
 
         self._prompt = "SYS> "
         self._buffer = []
         self._to_buffer('Unkown banner.')
         self.command_log = []
+        self._motion_steps_remaining: int = 0
 
     def post_init_reset(self):
         self.command_log = []
@@ -38,6 +38,10 @@ class FakeMotorController:
     @property
     def decoded_log(self) -> List[str]:
         return [s.decode('ascii').strip() for s in self.command_log]
+
+    def set_motion_steps(self, steps: int):
+        self._motion_steps_remaining = steps
+
 
     def read_buffer(self, prompt = None) -> bytes:
         end = len(self._buffer)
@@ -69,6 +73,7 @@ class FakeMotorController:
                 case 16224:
                     command_return = int(self.axis_clear_states[3])
                 case 516:
-                    command_return = int(self.in_motion)
+                    command_return = int(self._motion_steps_remaining > 0)
+                    self._motion_steps_remaining -= 1
 
         self._to_buffer(command + '\r\n' + str(command_return))

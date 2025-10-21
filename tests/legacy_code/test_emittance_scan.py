@@ -1,7 +1,7 @@
 from ops.ecris.legacy.emittance_scan import Motor
 from tests.fakes import FakeMotorController, fake_motor_controller
 
-from unittest.mock import patch, call
+from unittest.mock import MagicMock, patch, call
 
 import pytest
 
@@ -62,3 +62,26 @@ def test_axis_clear_calculates_correct_bit_and_calls_send_command(
     mock_sleep.assert_has_calls([call(0.07)]*len(commands))
     assert mock_sleep.call_count == len(commands)
     assert state == expected_state
+
+def test_move_to(mock_motor_controller):
+    motor, fake_controller, _, mock_sleep = mock_motor_controller
+    fake_controller.axis_clear_states = [True, True, True, True]
+    position_to_move = 15.5
+    axis_to_move = 0 # X
+    fake_controller.set_motion_steps(2)
+
+    motor.move_to(position_to_move, axis_to_move)
+    expected_bit = 16128 + 32
+
+    expected_commands = [
+        f"?BIT({expected_bit})",
+        "DRIVE ON X",
+        f"X{position_to_move}",
+        "?BIT(516)", # First check, returns 1 (in motion)
+        "?BIT(516)", # Second check, returns 1 (in motion)
+        "?BIT(516)", # Third check, returns 0 (motion complete)
+        "DRIVE OFF X"
+    ]
+    
+    assert fake_controller.decoded_log == expected_commands
+    assert fake_controller.buffer_clear
