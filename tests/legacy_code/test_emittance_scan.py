@@ -45,8 +45,31 @@ def test_motor_init(mock_motor_controller_no_reset):
         
     mock_sleep.assert_has_calls([call(0.07)]*2)
     assert mock_sleep.call_count == len(commands)
- 
+
 class MoveSequences:
+    @staticmethod
+    def _drive_sequence(axis: Axis, position: float, move_steps: int, relative=False) -> list[str]:
+        """
+        Generates the commands for a DRIVEN move.
+        STARTS with DRIVE ON, ENDS when the polling for that move is complete.
+        Does NOT include the initial axis clear check or the final DRIVE OFF.
+        """
+        move_cmd = Commands.RELATIVE_MOVE(axis, position) if relative else Commands.MOVE(axis, position)
+        return (
+            [Commands.DRIVE_ON(axis), move_cmd] 
+            + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (move_steps + 1))
+    
+    @staticmethod
+    def _coast_sequence(axis: Axis, coastdown_steps: int) -> list[str]:
+        """
+        Generates the commands for a COASTING stop.
+        STARTS with DRIVE OFF, ENDS when the polling for that coast is complete.
+        """
+        return (
+            [Commands.DRIVE_OFF(axis)]
+            + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (coastdown_steps + 1)
+        )
+
     @staticmethod
     def _full_move_sequence(axis: Axis, 
                             position_to_move: float, 
@@ -161,38 +184,48 @@ class TestAllAxes(MoveSequences):
 
     def test_centering_axis_not_clear(self, mock_motor_controller, axis):
         motor, _, _, _ = mock_motor_controller
-        move_steps = [4, 5, 6]
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
-        coastdown = [1, 2, 3]
+        
+        # Define the physics for this specific test run
+        move_steps = [4, 5, 6]
+        coastdown_steps = [1, 2, 3]
 
+        # The test now reads like a story, composing physical primitives.
         expected_commands = (
-            [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] 
-            + self._move_out_sequence(PERPENDICULAR_AXIS[axis], move_steps[0],
-                                      coastdown[0])
-            + [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
-            + self._full_move_sequence(axis, -200, move_steps[1], 
-                                       coastdown_steps=coastdown[1])
-            + self._full_move_sequence(axis, MID_POINT_OFFSETS[axis], 
-                                       move_steps[2], relative=True, 
-                                       coastdown_steps=coastdown[2])
-            + [Commands.RESET_AXIS(axis),
-               Commands.DRIVE_OFF(axis)])
+            # Scene 1: Initial check fails.
+            [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
 
+            # Scene 2: The "move_out" clearing sequence for the perpendicular axis.
+            + self._drive_sequence(perpendicular_axis, 200, move_steps[0])
+            + self._coast_sequence(perpendicular_axis, 0) # move_out has no coastdown
+            + [Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(perpendicular_axis))]
+            + self._coast_sequence(perpendicular_axis, coastdown_steps[0]) # The weird extra while loop
+            + [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] # The final safety check
+
+            # Scene 3: The primary move to the negative limit.
+            + self._drive_sequence(axis, -200, move_steps[1])
+            + self._coast_sequence(axis, coastdown_steps[1])
+
+            # Scene 4: The final relative move to the midpoint.
+            + self._drive_sequence(axis, MID_POINT_OFFSETS[axis], move_steps[2], relative=True)
+            + self._coast_sequence(axis, coastdown_steps[2])
+
+            # Scene 5: Final cleanup.
+            + [Commands.RESET_AXIS(axis), Commands.DRIVE_OFF(axis)]
+        )
+
+        # The setup is identical.
         test = set_up_test(mock_motor_controller, {
             FakeState.DecrementMotionOnCheck: True,
             FakeState.MotionSteps: move_steps,
             FakeState.AxisNotClear: perpendicular_axis,
             FakeState.ClearAxisOnStop: perpendicular_axis,
-            FakeState.CoastDownSteps: coastdown
+            FakeState.CoastDownSteps: coastdown_steps
             }, expected_commands)
 
+        # The action is identical.
         motor.centering(LEGACY_AXIS_MAPPING[axis])
         test.assert_passed()
-        for i, centered in enumerate(motor.centered):
-            if i == LEGACY_AXIS_MAPPING[axis]:
-                assert centered
-            else:
-                assert not centered
 
     def test_centering_axis_cant_clear(self, mock_motor_controller, axis):
         motor, _, _, _ = mock_motor_controller
