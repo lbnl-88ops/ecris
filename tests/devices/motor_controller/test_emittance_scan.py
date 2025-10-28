@@ -1,7 +1,7 @@
 from ops.ecris.legacy.emittance_scan import FatalError, Motor
 from ops.ecris.legacy.mappings import LEGACY_AXIS_MAPPING
-from tests.fakes import FakeMotorController
-from tests.fakes.fake_motor_controller import set_up_test, FakeState
+from .fakes import FakeMotorController
+from .fakes.fake_motor_controller import set_up_test, FakeState
 from ops.ecris.devices.motor_controller_specification import (
     Axis, Commands, PERPENDICULAR_AXIS, Bit,
     MID_POINT_OFFSETS)
