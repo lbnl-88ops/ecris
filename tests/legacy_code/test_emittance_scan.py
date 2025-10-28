@@ -60,39 +60,32 @@ class MoveSequences:
             + [Commands.CHECK_IN_MOTION()] * (move_steps + 1))
     
     @staticmethod
-    def _coast_sequence(axis: Axis, coastdown_steps: int) -> list[str]:
+    def _in_motion_check(coastdown_steps: int) -> list[str]:
         """
         Generates the commands for a COASTING stop.
         STARTS with DRIVE OFF, ENDS when the polling for that coast is complete.
         """
-        return (
-            [Commands.DRIVE_OFF(axis)]
-            + [Commands.CHECK_IN_MOTION()] * (coastdown_steps + 1)
-        )
+        return ([Commands.CHECK_IN_MOTION()] * (coastdown_steps + 1))
 
     @staticmethod
-    def _full_move_sequence(axis: Axis, 
-                            position_to_move: float, 
-                            move_steps: int,
-                            relative=False,
-                            coastdown_steps: int = 0):
+    def _move_to(axis: Axis, 
+                 position_to_move: float, 
+                 move_steps: int, 
+                 relative=False, 
+                 coastdown_steps: int = 0):
         expected_commands = ([
             Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis), 
             Commands.DRIVE_ON(axis), 
             Commands.RELATIVE_MOVE(axis, position_to_move) if relative else Commands.MOVE(axis, position_to_move)]
             + [Commands.CHECK_IN_MOTION()] * (move_steps + 1)
-            + [Commands.DRIVE_OFF(axis)]
-            + [Commands.CHECK_IN_MOTION()] * (coastdown_steps + 1 
-                                                     if coastdown_steps > 0 else 0))
+            + [Commands.DRIVE_OFF(axis)])
         return expected_commands
 
     @staticmethod
-    def _move_out_sequence(axis: Axis, move_steps: int, coastdown_steps: int = 0):
-        return (MoveSequences._full_move_sequence(axis, 200, move_steps) + [
+    def _move_out_sequence(axis: Axis, move_steps: int):
+        return (MoveSequences._move_to(axis, 200, move_steps) + [
             Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)),
-            Commands.DRIVE_OFF(axis)] 
-            + [Commands.CHECK_IN_MOTION()] * (1 + coastdown_steps 
-                                                     if coastdown_steps > 0 else 0))
+            Commands.DRIVE_OFF(axis)] )
 
     @staticmethod
     def _cleanup_after_limit_sequence(axis: Axis,
@@ -109,7 +102,7 @@ class TestAllAxes(MoveSequences):
         self, mock_motor_controller, axis, expected_state):
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
 
-        motor, fake_controller, _ , mock_sleep = mock_motor_controller
+        motor, _, _ , _ = mock_motor_controller
         commands = [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
 
         if not expected_state:
@@ -142,11 +135,10 @@ class TestAllAxes(MoveSequences):
 
         expected_commands = (
             [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)] 
-            + self._full_move_sequence(axis, -200, move_steps[0], 
-                                       coastdown_steps=coastdown[0])
-            + self._full_move_sequence(axis, MID_POINT_OFFSETS[axis], 
-                                       move_steps[1], relative=True,
-                                       coastdown_steps = coastdown[1])
+            + self._move_to(axis, -200, move_steps[0])
+            + self._in_motion_check(coastdown[0])
+            + self._move_to(axis, MID_POINT_OFFSETS[axis], move_steps[1], relative=True)
+            + self._in_motion_check(coastdown[1])
             + [Commands.RESET_AXIS(axis),
                Commands.DRIVE_OFF(axis)])
 
@@ -171,7 +163,7 @@ class TestAllAxes(MoveSequences):
 
         expected_commands = (
             [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
-            + self._full_move_sequence(axis, 0, move_steps[0])
+            + self._move_to(axis, 0, move_steps[0])
         )
 
         test = set_up_test(mock_motor_controller, {
@@ -193,15 +185,15 @@ class TestAllAxes(MoveSequences):
         # The test now reads like a story, composing physical primitives.
         expected_commands = (
             [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
-            + self._move_out_sequence(perpendicular_axis, move_steps[0], 
-                                      coastdown_steps=coastdown_steps[0])
+            + self._move_out_sequence(perpendicular_axis, move_steps[0])
+            + self._in_motion_check(coastdown_steps[0])
             + [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)] # The final safety check
-
-            + self._full_move_sequence(axis, -200, move_steps[1], coastdown_steps=coastdown_steps[1])
-
-            + self._full_move_sequence(axis, MID_POINT_OFFSETS[axis], move_steps[2], relative=True,
-                                       coastdown_steps=coastdown_steps[2])
-            + [Commands.RESET_AXIS(axis), Commands.DRIVE_OFF(axis)]
+            + self._move_to(axis, -200, move_steps[1])
+            + self._in_motion_check(coastdown_steps[1])
+            + self._move_to(axis, MID_POINT_OFFSETS[axis], move_steps[2], relative=True)
+            + self._in_motion_check(coastdown_steps[2])
+            + [Commands.RESET_AXIS(axis), 
+               Commands.DRIVE_OFF(axis)]
         )
 
         # The setup is identical.
@@ -245,7 +237,7 @@ class TestMoveSequencesWithRelative(MoveSequences):
         motor, _, _, _ = mock_motor_controller
         position_to_move = 15.5
         move_steps: int = 2
-        expected_commands = self._full_move_sequence(axis, position_to_move, move_steps, relative)
+        expected_commands = self._move_to(axis, position_to_move, move_steps, relative)
         
         test = set_up_test(mock_motor_controller, {
             FakeState.MotionSteps: move_steps,
@@ -261,9 +253,9 @@ class TestMoveSequencesWithRelative(MoveSequences):
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
         move_steps = [2, 3]
         coastdown_steps = [1]
-        clearing_move = self._full_move_sequence(perpendicular_axis, 200, move_steps[0])
+        clearing_move = self._move_to(perpendicular_axis, 200, move_steps[0])
         cleanup = self._cleanup_after_limit_sequence(axis, coastdown_steps=coastdown_steps[0])
-        primary_move = self._full_move_sequence(axis, position_to_move, move_steps[1], relative)
+        primary_move = self._move_to(axis, position_to_move, move_steps[1], relative)
 
         expected_commands = (
             [primary_move[0]] 
@@ -289,9 +281,9 @@ class TestMoveSequencesWithRelative(MoveSequences):
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
         move_steps = [4, 3]
 
-        clearing_move = self._full_move_sequence(perpendicular_axis, 200, move_steps[0])
+        clearing_move = self._move_to(perpendicular_axis, 200, move_steps[0])
         cleanup = self._cleanup_after_limit_sequence(axis)
-        primary_move = self._full_move_sequence(axis, position_to_move, move_steps[1], relative)
+        primary_move = self._move_to(axis, position_to_move, move_steps[1], relative)
 
         expected_commands = (
             [primary_move[0]]
@@ -316,7 +308,7 @@ class TestMoveSequencesWithRelative(MoveSequences):
         position_to_move = 15.5
         move_steps = [4, 3]
 
-        primary_move = self._full_move_sequence(axis, position_to_move, move_steps[1], relative)
+        primary_move = self._move_to(axis, position_to_move, move_steps[1], relative)
         step_to_interrupt = 5
 
         expected_commands = (

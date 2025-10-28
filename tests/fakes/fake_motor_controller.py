@@ -40,6 +40,7 @@ class FakeMotorController:
         self.decrement_motion_on_check: bool = False
         self.axis_clear_after_stop: Axis | None = None
         self.exception_timer: Tuple[int, Exception] | None = None
+        self.coasting_down = False
 
     def post_init_reset(self):
         self.command_log = []
@@ -75,6 +76,8 @@ class FakeMotorController:
         if self.decrement_motion_on_check and self._current_motion_steps > 0:
             self._current_motion_steps -= 1
             if self._current_motion_steps == 0:
+                if self.coasting_down:
+                    self.coasting_down = False
                 if self.axis_clear_after_stop is not None:
                     self.axis_clear_states[self.axis_clear_after_stop] = True
 
@@ -120,7 +123,8 @@ class FakeMotorController:
         elif command.startswith("X") or command.startswith("Y") or command.startswith("Z") or command.startswith("A"): # move command
             self._put_in_motion()
         elif command.startswith("DRIVE OFF"):
-            if self.coastdown_steps_remaining:
+            if self.coastdown_steps_remaining and not self.coasting_down:
+                self.coasting_down = True
                 self._current_motion_steps = self.coastdown_steps_remaining.pop(0)
 
         self._to_buffer(command + '\r\n' + str(command_return))
