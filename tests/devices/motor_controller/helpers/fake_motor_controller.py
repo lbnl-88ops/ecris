@@ -32,7 +32,7 @@ class FakeMotorController:
         }  # Default to clear
 
         self._prompt = "SYS> "
-        self._buffer = []
+        self._buffer = b""
         self._to_buffer("Unkown banner.")
         self.command_log = []
         self._current_motion_steps: int = 0
@@ -47,15 +47,19 @@ class FakeMotorController:
 
     def post_init_reset(self):
         self.command_log = []
-        self._buffer = []
+        self._buffer = b""
         self._prompt = "SYS> "
+
+    @property
+    def buffer_lines(self) -> int:
+        return len(self._buffer.split(b"\r\n"))
 
     @property
     def buffer_clear(self) -> bool:
         return len(self._buffer) == 0
 
     def _to_buffer(self, unencoded_command) -> None:
-        self._buffer.append(f"{unencoded_command}\r\n{self._prompt}".encode("ascii"))
+        self._buffer += f"{unencoded_command}\r\n{self._prompt}".encode("ascii")
 
     @property
     def decoded_log(self) -> List[str]:
@@ -66,13 +70,15 @@ class FakeMotorController:
 
     def read_buffer(self, prompt: bytes | None = None) -> bytes:
         end = len(self._buffer)
+        buffer_string = self._buffer.decode("ascii")
         if prompt is not None:
-            for i, line in enumerate(self._buffer):
-                if line.decode("ascii").endswith(prompt.decode("ascii")):
-                    end = i
-                    break
-        read_buffer = b"".join(self._buffer[0 : end + 1])
-        del self._buffer[0 : end + 1]
+            prompt_string = prompt.decode("ascii")
+            first_prompt = buffer_string.find(prompt_string)
+            if first_prompt != -1:
+                end = first_prompt + len(prompt)
+        read_buffer = buffer_string[0:end].encode("ascii")
+        buffer_string = buffer_string[end:]
+        self._buffer = buffer_string.encode("ascii")
         return read_buffer
 
     def _move(self) -> None:
@@ -94,8 +100,7 @@ class FakeMotorController:
         else:
             raise RuntimeError
 
-    def handle_command(self, raw_command):
-        print("handle command")
+    def handle_command(self, raw_command: bytes):
         if self.exception_timer is not None:
             value, exception = self.exception_timer
             if value == 0:
@@ -135,7 +140,9 @@ class FakeMotorController:
                 self.coasting_down = True
                 self._current_motion_steps = self.coastdown_steps_remaining.pop(0)
 
-        self._to_buffer(command + "\r\n" + str(command_return))
+        self._to_buffer(command)
+        if command_return:
+            self._to_buffer(command_return)
 
 
 class FakeState(Enum):

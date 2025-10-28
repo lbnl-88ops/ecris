@@ -8,7 +8,8 @@ def test_fake_buffer_reads_all_correctly():
     for i in range(n_commands):
         fake_controller.handle_command("test command\r\n".encode("ascii"))
         assert not fake_controller.buffer_clear
-        assert len(fake_controller._buffer) == i + 2
+        # Buffer should have an extra line for the banner
+        assert fake_controller.buffer_lines == i + 3, rf"{fake_controller._buffer}"
     fake_controller.read_buffer()
     assert fake_controller.buffer_clear
 
@@ -23,12 +24,16 @@ def test_fake_buffer_reads_to_prompt_correctly():
     for i in range(n_commands):
         fake_controller.handle_command("test command\r\n".encode("ascii"))
         assert not fake_controller.buffer_clear
-        assert len(fake_controller._buffer) == i + 1
+        assert fake_controller.buffer_lines == i + 2
 
+    print(rf"{fake_controller._buffer}")
     for i in range(n_commands):
         assert not fake_controller.buffer_clear
+        assert fake_controller._buffer == (
+            f"test command\r\n{fake_controller._prompt}" * (n_commands - i)
+        ).encode("ascii")
         fake_controller.read_buffer(fake_controller._prompt.encode("ascii"))
-        assert len(fake_controller._buffer) == n_commands - (i + 1)
+        assert fake_controller.buffer_lines == n_commands - i, rf"{fake_controller._buffer}"
 
     assert fake_controller.buffer_clear
 
