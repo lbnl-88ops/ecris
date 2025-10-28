@@ -8,12 +8,13 @@ import pytest
 from ops.ecris.devices.motor_controller_specification import Axis
 from ops.ecris.legacy.mappings import LEGACY_AXIS_MAPPING
 
+
 class FakeMotorController:
     def __init__(self, unit_mode="mm", initial_positions=None):
         # --- CONFIGURATION ---
         self.unit_mode = unit_mode
         self._positions = initial_positions or [100.0, 100.0, 100.0, 100.0]
-        
+
         if self.unit_mode == "mm":
             self._unit_distance = 19685
         elif self.unit_mode == "steps":
@@ -23,14 +24,16 @@ class FakeMotorController:
         else:
             self._unit_distance = -1
 
-        self.axis_clear_states = {Axis.X: True, 
-                                  Axis.Y: True, 
-                                  Axis.Z: True, 
-                                  Axis.A: True} # Default to clear
+        self.axis_clear_states = {
+            Axis.X: True,
+            Axis.Y: True,
+            Axis.Z: True,
+            Axis.A: True,
+        }  # Default to clear
 
         self._prompt = "SYS> "
         self._buffer = []
-        self._to_buffer('Unkown banner.')
+        self._to_buffer("Unkown banner.")
         self.command_log = []
         self._current_motion_steps: int = 0
 
@@ -52,24 +55,24 @@ class FakeMotorController:
         return len(self._buffer) == 0
 
     def _to_buffer(self, unencoded_command) -> None:
-        self._buffer.append(f"{unencoded_command}\r\n{self._prompt}".encode('ascii'))
+        self._buffer.append(f"{unencoded_command}\r\n{self._prompt}".encode("ascii"))
 
     @property
     def decoded_log(self) -> List[str]:
-        return [s.decode('ascii').strip() for s in self.command_log]
+        return [s.decode("ascii").strip() for s in self.command_log]
 
     def set_motion_steps(self, steps: List[int]):
         self.motion_steps_remaining = steps
 
-    def read_buffer(self, prompt = None) -> bytes:
+    def read_buffer(self, prompt: bytes | None = None) -> bytes:
         end = len(self._buffer)
         if prompt is not None:
             for i, line in enumerate(self._buffer):
-                if line.decode('ascii').endswith(prompt):
+                if line.decode("ascii").endswith(prompt.decode("ascii")):
                     end = i
                     break
-        read_buffer = b''.join(self._buffer[0:end + 1])
-        del self._buffer[0:end + 1]
+        read_buffer = b"".join(self._buffer[0 : end + 1])
+        del self._buffer[0 : end + 1]
         return read_buffer
 
     def _move(self) -> None:
@@ -91,7 +94,6 @@ class FakeMotorController:
         else:
             raise RuntimeError
 
-
     def handle_command(self, raw_command):
         if self.exception_timer is not None:
             value, exception = self.exception_timer
@@ -101,7 +103,7 @@ class FakeMotorController:
             else:
                 self.exception_timer = (value - 1, exception)
         self.command_log.append(raw_command)
-        command = raw_command.decode('ascii').strip()
+        command = raw_command.decode("ascii").strip()
         command_return = ""
 
         if command == "PROG0":
@@ -120,14 +122,20 @@ class FakeMotorController:
                 case 516:
                     command_return = int(self._current_motion_steps > 0)
                     self._move()
-        elif command.startswith("X") or command.startswith("Y") or command.startswith("Z") or command.startswith("A"): # move command
+        elif (
+            command.startswith("X")
+            or command.startswith("Y")
+            or command.startswith("Z")
+            or command.startswith("A")
+        ):  # move command
             self._put_in_motion()
         elif command.startswith("DRIVE OFF"):
             if self.coastdown_steps_remaining and not self.coasting_down:
                 self.coasting_down = True
                 self._current_motion_steps = self.coastdown_steps_remaining.pop(0)
 
-        self._to_buffer(command + '\r\n' + str(command_return))
+        self._to_buffer(command + "\r\n" + str(command_return))
+
 
 class FakeState(Enum):
     AxisNotClear = auto()
@@ -138,6 +146,7 @@ class FakeState(Enum):
     ClearAxisOnStop = auto()
     InterruptAfterCommands = auto()
 
+
 class CheckTestPassed:
     def __init__(self, fake: FakeMotorController, mock_sleep, commands):
         self._mock_sleep = mock_sleep
@@ -145,14 +154,15 @@ class CheckTestPassed:
         self._commands = commands
 
     def assert_passed(self):
-        assert self._fake.decoded_log == self._commands, f"{self._fake.decoded_log} != {self._commands}"
+        assert self._fake.decoded_log == self._commands, (
+            f"{self._fake.decoded_log} != {self._commands}"
+        )
         assert self._fake.buffer_clear
-        self._mock_sleep.assert_has_calls([call(0.07)]*len(self._commands))
+        self._mock_sleep.assert_has_calls([call(0.07)] * len(self._commands))
         assert self._mock_sleep.call_count == len(self._commands)
 
-def set_up_test(setup_classes,
-               states: Dict[FakeState, Any],
-               commands):
+
+def set_up_test(setup_classes, states: Dict[FakeState, Any], commands):
     fake: FakeMotorController
     motor, fake, mock_connection, mock_sleep = setup_classes
     for state, value in states.items():
@@ -175,4 +185,4 @@ def set_up_test(setup_classes,
             case FakeState.CoastDownSteps:
                 fake.coastdown_steps_remaining = value
     return CheckTestPassed(fake, mock_sleep, commands)
-    
+
