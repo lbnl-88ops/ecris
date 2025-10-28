@@ -141,9 +141,10 @@ class FakeMotorController:
                 self.coasting_down = True
                 self._current_motion_steps = self.coastdown_steps_remaining.pop(0)
 
-        self._to_buffer(command)
         if command_return:
-            self._to_buffer(command_return)
+            self._to_buffer(command + "\r\n" + str(command_return))
+        else:
+            self._to_buffer(command)
 
 
 class FakeState(Enum):

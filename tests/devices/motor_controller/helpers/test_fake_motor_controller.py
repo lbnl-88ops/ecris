@@ -1,4 +1,14 @@
 from .fake_motor_controller import FakeMotorController
+from ops.ecris.devices.motor_controller_specification import Commands, Axis
+
+
+def test_fake_axis_check_returns_correct_values():
+    fake_controller = FakeMotorController()
+    fake_controller.read_buffer()
+    command = Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(Axis.X)
+    fake_controller.handle_command(command.encode("ascii"))
+    expected_buffer = f"{command}\r\n1\r\n{fake_controller._prompt}".encode("ascii")
+    assert expected_buffer == fake_controller._buffer
 
 
 def test_fake_buffer_reads_all_correctly():
