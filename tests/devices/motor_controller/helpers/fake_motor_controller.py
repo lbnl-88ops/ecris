@@ -33,7 +33,8 @@ class FakeMotorController:
 
         self._prompt = "SYS> "
         self._buffer = b""
-        self._to_buffer("Unkown banner.")
+        self._banner = "Unknown banner."
+        self._to_buffer(self._banner)
         self.command_log = []
         self._current_motion_steps: int = 0
 

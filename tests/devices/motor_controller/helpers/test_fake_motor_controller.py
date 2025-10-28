@@ -10,7 +10,15 @@ def test_fake_buffer_reads_all_correctly():
         assert not fake_controller.buffer_clear
         # Buffer should have an extra line for the banner
         assert fake_controller.buffer_lines == i + 3, rf"{fake_controller._buffer}"
-    fake_controller.read_buffer()
+        assert fake_controller._buffer == (
+            f"{fake_controller._banner}\r\n{fake_controller._prompt}"
+            + f"test command\r\n{fake_controller._prompt}" * (i + 1)
+        ).encode("ascii")
+    value = fake_controller.read_buffer()
+    assert value == (
+        f"{fake_controller._banner}\r\n{fake_controller._prompt}"
+        + f"test command\r\n{fake_controller._prompt}" * (n_commands)
+    ).encode("ascii")
     assert fake_controller.buffer_clear
 
 
