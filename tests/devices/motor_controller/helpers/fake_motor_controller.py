@@ -111,7 +111,7 @@ class FakeMotorController:
                 self.exception_timer = (value - 1, exception)
         self.command_log.append(raw_command)
         command = raw_command.decode("ascii").strip()
-        command_return = ""
+        command_return = None
 
         if command == "PROG0":
             self._prompt = "POO> "
@@ -141,7 +141,7 @@ class FakeMotorController:
                 self.coasting_down = True
                 self._current_motion_steps = self.coastdown_steps_remaining.pop(0)
 
-        if command_return:
+        if command_return is not None:
             self._to_buffer(command + "\r\n" + str(command_return))
         else:
             self._to_buffer(command)
@@ -195,4 +195,3 @@ def set_up_test(setup_classes, states: Dict[FakeState, Any], commands):
             case FakeState.CoastDownSteps:
                 fake.coastdown_steps_remaining = value
     return CheckTestPassed(fake, mock_sleep, commands)
-

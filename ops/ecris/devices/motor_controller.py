@@ -2,9 +2,10 @@ import asyncio
 from enum import StrEnum, Enum, auto
 from logging import getLogger
 from typing import Any
+import asyncio
 
 from ops.ecris.model.device import TelnetDevice
-from .motor_controller_specification import Commands
+from .motor_controller_specification import Commands, Axis, PERPENDICULAR_AXIS
 
 _log = getLogger(__name__)
 
@@ -31,11 +32,13 @@ class MotorController(TelnetDevice):
         await super().connect()
         await self._setup()
 
-    async def send_command(self, command: str):
+    async def send_command(self, command: str) -> str:
         await self._write(command)
+        await asyncio.sleep(0.07)
         raw_response = await self._read_until(self._prompt)
-        response_lines = [l.strip() for l in raw_response.split()]
-        response = [l for l in response_lines if l != self._prompt and l != command]
+        print(f"{raw_response=}")
+        response_lines = [l.strip() for l in raw_response.split("\r\n")]
+        response = [l for l in response_lines if l != self._prompt.strip() and l != command]
         if len(response) == 1:
             return response[0]
         return response
@@ -44,3 +47,7 @@ class MotorController(TelnetDevice):
         self._prompt = "P00> "
         await self.send_command(Commands.OPEN_PROGRAM0)
         await self.send_command(Commands.SET_RAMPING)
+
+    async def is_axis_clear_to_move(self, axis: Axis):
+        response = await self.send_command(Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis))
+        return bool(int(response))
