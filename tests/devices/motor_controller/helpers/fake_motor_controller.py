@@ -95,6 +95,7 @@ class FakeMotorController:
             raise RuntimeError
 
     def handle_command(self, raw_command):
+        print("handle command")
         if self.exception_timer is not None:
             value, exception = self.exception_timer
             if value == 0:
