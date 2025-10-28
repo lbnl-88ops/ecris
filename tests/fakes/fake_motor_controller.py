@@ -115,7 +115,6 @@ class FakeMotorController:
                 case 16224:
                     command_return = int(self.axis_clear_states[Axis.A])
                 case 516:
-                    print('In motion queried')
                     command_return = int(self._current_motion_steps > 0)
                     self._move()
         elif command.startswith("X") or command.startswith("Y") or command.startswith("Z") or command.startswith("A"): # move command

@@ -18,6 +18,17 @@ MID_POINT_OFFSETS = {Axis.X: 30.18,
                      Axis.Z: 31.75, 
                      Axis.A: 31.75} 
 
+class Bit:
+    IN_MOTION: int = 516
+
+    @staticmethod
+    def AXIS_CLEAR(axis: Axis) -> int:
+        return 16128 + axis.value * 32
+
+    @staticmethod
+    def KILL_ALL_MOVES(axis: Axis) -> int:
+        return 8467 + axis.value * 32
+
 class Commands(StrEnum):
     OPEN_PROGRAM0 = 'PROG0'
     SET_RAMPING = "ACC 5 DEC 5 VEL 15 STP 100"
@@ -54,14 +65,10 @@ class Commands(StrEnum):
     def RESET_AXIS(axis: Axis):
         return f"RES AXIS{str(axis.value)}"
 
-class Bit:
-    IN_MOTION: int = 516
+    @staticmethod
+    def CHECK_IN_MOTION() -> str:
+        return Commands.QUERY_BIT(Bit.IN_MOTION)
 
     @staticmethod
-    def AXIS_CLEAR(axis: Axis) -> int:
-        axis_to_check = PERPENDICULAR_AXIS[axis]
-        return 16128 + axis_to_check.value * 32
-
-    @staticmethod
-    def KILL_ALL_MOVES(axis: Axis) -> int:
-        return 8467 + axis.value * 32
+    def CHECK_PERPENDICULAR_AXIS_CLEAR(axis: Axis) -> str:
+        return Commands.QUERY_BIT(Bit.AXIS_CLEAR(PERPENDICULAR_AXIS[axis]))

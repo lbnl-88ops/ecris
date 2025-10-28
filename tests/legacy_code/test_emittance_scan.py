@@ -57,7 +57,7 @@ class MoveSequences:
         move_cmd = Commands.RELATIVE_MOVE(axis, position) if relative else Commands.MOVE(axis, position)
         return (
             [Commands.DRIVE_ON(axis), move_cmd] 
-            + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (move_steps + 1))
+            + [Commands.CHECK_IN_MOTION()] * (move_steps + 1))
     
     @staticmethod
     def _coast_sequence(axis: Axis, coastdown_steps: int) -> list[str]:
@@ -67,7 +67,7 @@ class MoveSequences:
         """
         return (
             [Commands.DRIVE_OFF(axis)]
-            + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (coastdown_steps + 1)
+            + [Commands.CHECK_IN_MOTION()] * (coastdown_steps + 1)
         )
 
     @staticmethod
@@ -77,12 +77,12 @@ class MoveSequences:
                             relative=False,
                             coastdown_steps: int = 0):
         expected_commands = ([
-            Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis)), 
+            Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis), 
             Commands.DRIVE_ON(axis), 
             Commands.RELATIVE_MOVE(axis, position_to_move) if relative else Commands.MOVE(axis, position_to_move)]
-            + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (move_steps + 1)
+            + [Commands.CHECK_IN_MOTION()] * (move_steps + 1)
             + [Commands.DRIVE_OFF(axis)]
-            + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (coastdown_steps + 1 
+            + [Commands.CHECK_IN_MOTION()] * (coastdown_steps + 1 
                                                      if coastdown_steps > 0 else 0))
         return expected_commands
 
@@ -91,7 +91,7 @@ class MoveSequences:
         return (MoveSequences._full_move_sequence(axis, 200, move_steps) + [
             Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)),
             Commands.DRIVE_OFF(axis)] 
-            + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (1 + coastdown_steps 
+            + [Commands.CHECK_IN_MOTION()] * (1 + coastdown_steps 
                                                      if coastdown_steps > 0 else 0))
 
     @staticmethod
@@ -99,8 +99,8 @@ class MoveSequences:
                                       coastdown_steps: int = 0):
         return (
             [Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)), Commands.DRIVE_OFF(axis)]
-            + [Commands.QUERY_BIT(Bit.IN_MOTION)] * (coastdown_steps + 1)
-            + [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))])
+            + [Commands.CHECK_IN_MOTION()] * (coastdown_steps + 1)
+            + [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)])
 
 @pytest.mark.parametrize("axis", ALL_AXES)
 class TestAllAxes(MoveSequences):
@@ -110,7 +110,7 @@ class TestAllAxes(MoveSequences):
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
 
         motor, fake_controller, _ , mock_sleep = mock_motor_controller
-        commands = [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
+        commands = [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
 
         if not expected_state:
             test = set_up_test(mock_motor_controller, 
@@ -141,7 +141,7 @@ class TestAllAxes(MoveSequences):
         coastdown = [1, 2]
 
         expected_commands = (
-            [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] 
+            [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)] 
             + self._full_move_sequence(axis, -200, move_steps[0], 
                                        coastdown_steps=coastdown[0])
             + self._full_move_sequence(axis, MID_POINT_OFFSETS[axis], 
@@ -170,7 +170,7 @@ class TestAllAxes(MoveSequences):
         motor.centered[LEGACY_AXIS_MAPPING[axis]] = True
 
         expected_commands = (
-            [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] 
+            [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
             + self._full_move_sequence(axis, 0, move_steps[0])
         )
 
@@ -192,25 +192,15 @@ class TestAllAxes(MoveSequences):
 
         # The test now reads like a story, composing physical primitives.
         expected_commands = (
-            # Scene 1: Initial check fails.
-            [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))]
+            [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
+            + self._move_out_sequence(perpendicular_axis, move_steps[0], 
+                                      coastdown_steps=coastdown_steps[0])
+            + [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)] # The final safety check
 
-            # Scene 2: The "move_out" clearing sequence for the perpendicular axis.
-            + self._drive_sequence(perpendicular_axis, 200, move_steps[0])
-            + self._coast_sequence(perpendicular_axis, 0) # move_out has no coastdown
-            + [Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(perpendicular_axis))]
-            + self._coast_sequence(perpendicular_axis, coastdown_steps[0]) # The weird extra while loop
-            + [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] # The final safety check
+            + self._full_move_sequence(axis, -200, move_steps[1], coastdown_steps=coastdown_steps[1])
 
-            # Scene 3: The primary move to the negative limit.
-            + self._drive_sequence(axis, -200, move_steps[1])
-            + self._coast_sequence(axis, coastdown_steps[1])
-
-            # Scene 4: The final relative move to the midpoint.
-            + self._drive_sequence(axis, MID_POINT_OFFSETS[axis], move_steps[2], relative=True)
-            + self._coast_sequence(axis, coastdown_steps[2])
-
-            # Scene 5: Final cleanup.
+            + self._full_move_sequence(axis, MID_POINT_OFFSETS[axis], move_steps[2], relative=True,
+                                       coastdown_steps=coastdown_steps[2])
             + [Commands.RESET_AXIS(axis), Commands.DRIVE_OFF(axis)]
         )
 
@@ -233,10 +223,10 @@ class TestAllAxes(MoveSequences):
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
 
         expected_commands = (
-            [Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis))] 
+            [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
             + self._move_out_sequence(PERPENDICULAR_AXIS[axis], move_steps[0])
-            + [Commands.QUERY_BIT(Bit.IN_MOTION),
-               Commands.QUERY_BIT(Bit.AXIS_CLEAR(axis)),
+            + [Commands.CHECK_IN_MOTION(),
+               Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis),
                Commands.DRIVE_OFF(axis)])
 
         test = set_up_test(mock_motor_controller, {
