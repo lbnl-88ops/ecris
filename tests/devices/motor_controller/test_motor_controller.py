@@ -23,7 +23,7 @@ MODULE = "ops.ecris.devices.motor_controller."
 
 @pytest.fixture
 def mock_motor_controller_not_connected():
-    fake_controller = FakeMotorController()
+    fake_controller = FakeMotorController(include_sleep=False)
     with (
         patch(DEVICE_MODULE + "open_connection") as mock_open_conn,
         patch(MODULE + "asyncio.sleep") as mock_sleep,
@@ -198,8 +198,8 @@ class TestAllAxes(MoveSequences):
         await motor.center_axis(axis)
         test.assert_passed()
 
-    @pytest.mark.skip
     async def test_centering_axis_cant_clear(self, mock_motor_controller, axis):
+        motor: MotorController
         motor, _, _, _ = mock_motor_controller
         move_steps = [2, 3, 4]
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
@@ -224,7 +224,7 @@ class TestAllAxes(MoveSequences):
             expected_commands,
         )
         with pytest.raises(DeviceMalfunctionError):
-            motor.centering(LEGACY_AXIS_MAPPING[axis])
+            await motor.center_axis(axis)
         test.assert_passed()
 
 

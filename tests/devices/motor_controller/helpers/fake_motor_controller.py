@@ -9,7 +9,7 @@ from ops.ecris.legacy.mappings import LEGACY_AXIS_MAPPING
 
 
 class FakeMotorController:
-    def __init__(self, unit_mode="mm", initial_positions=None):
+    def __init__(self, unit_mode="mm", initial_positions=None, include_sleep=True):
         # --- CONFIGURATION ---
         self.unit_mode = unit_mode
         self._positions = initial_positions or [100.0, 100.0, 100.0, 100.0]
@@ -36,6 +36,7 @@ class FakeMotorController:
         self._to_buffer(self._banner)
         self.command_log = []
         self._current_motion_steps: int = 0
+        self.include_sleep = include_sleep
 
         # Test parameters
         self.motion_steps_remaining: List[int] = [0]
@@ -167,8 +168,9 @@ class CheckTestPassed:
             f"{self._fake.decoded_log} != {self._commands}"
         )
         assert self._fake.buffer_clear
-        self._mock_sleep.assert_has_calls([call(0.07)] * len(self._commands))
-        assert self._mock_sleep.call_count == len(self._commands)
+        if self._fake.include_sleep:
+            self._mock_sleep.assert_has_calls([call(0.07)] * len(self._commands))
+            assert self._mock_sleep.call_count == len(self._commands)
 
 
 def set_up_test(setup_classes, states: Dict[FakeState, Any], commands):

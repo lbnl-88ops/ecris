@@ -55,7 +55,6 @@ class MotorController(TelnetDevice):
 
     async def send_command(self, command: str, return_type: Type[_T] | None = None) -> _T | None:
         await self._write(command)
-        await asyncio.sleep(0.07)
         raw_response = await self._read_until(self._prompt)
         if return_type is not None:
             response_lines = [ln.strip() for ln in raw_response.split("\r\n")]
@@ -138,7 +137,8 @@ class MotorController(TelnetDevice):
             await self._move_axis_to_positive_eof_unsafe(perpendicular_axis)
             await self._movement_stopped(perpendicular_axis)
             if not await self.is_axis_clear_to_move(axis):
-                pass
+                await self.send_command(Commands.DRIVE_OFF(axis))
+                raise DeviceMalfunctionError(f"Axis {axis} cannot be cleared")
         if self.is_centered(axis):
             await self._move_to_position_unsafe(axis, 0)
             return
