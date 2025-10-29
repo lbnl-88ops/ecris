@@ -3,7 +3,6 @@ from typing import List, Dict, Any, Tuple
 from enum import Enum, auto
 
 from unittest.mock import call, MagicMock
-import pytest
 
 from ops.ecris.devices.motor_controller_specification import Axis
 from ops.ecris.legacy.mappings import LEGACY_AXIS_MAPPING
