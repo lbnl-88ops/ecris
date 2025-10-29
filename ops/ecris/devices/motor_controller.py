@@ -1,7 +1,7 @@
 import asyncio
 from enum import StrEnum, Enum, auto
 from logging import getLogger
-from typing import Any, List, Type, TypeVar, overload
+from typing import Any, List, Type, TypeVar, overload, Literal
 import asyncio
 
 from ops.ecris.utilities.decorators import with_lock_named
@@ -56,11 +56,17 @@ class MotorController(TelnetDevice):
                 raise RuntimeError(f"Unexpected response from Motor Controller: {response}")
             try:
                 value = response[0]
-                if return_type is bool and value.isdigit:
-                    return bool(int(value))
-                return return_type(response[0])
+                if return_type is bool:
+                    match value.lower():
+                        case "1" | "yes" | "true" | "on":
+                            return return_type(True)
+                        case "0" | "no" | "off" | "false":
+                            return return_type(False)
+                        case _:
+                            raise ValueError(f"Unrecognized boolean value {value}")
+                return return_type(value)
             except ValueError:
-                raise RuntimeError(f"Could not convert {response=} to type {return_type}")
+                raise RuntimeError(f"Could not convert {response=} to type {return_type.__name__}")
 
     async def _setup(self) -> None:
         self._prompt = "P00> "
