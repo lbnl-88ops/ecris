@@ -74,13 +74,19 @@ class MotorController(TelnetDevice):
         await self.send_command(Commands.OPEN_PROGRAM0)
         await self.send_command(Commands.SET_RAMPING)
 
-    async def _movement_stopped(self):
+    async def _movement_stopped(self, axis: Axis | None):
         is_moving = True
         try:
             while is_moving:
                 is_moving = await self.send_command(Commands.CHECK_IN_MOTION(), bool)
         except KeyboardInterrupt:
-            raise
+            if axis is not None:
+                await self.send_command(Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)))
+                await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
+                await self.send_command(Commands.DRIVE_OFF(axis))
+                raise
+            else:
+                raise
 
     async def is_axis_clear_to_move(self, axis: Axis) -> bool:
         return await self.send_command(Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis), bool)
@@ -95,19 +101,13 @@ class MotorController(TelnetDevice):
             await self._move_to_position_unsafe(perpendicular_axis, 200)
             await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
             await self.send_command(Commands.DRIVE_OFF(axis))
-            await self._movement_stopped()
+            await self._movement_stopped(perpendicular_axis)
             if not await self.is_axis_clear_to_move(axis):
                 await self.send_command(Commands.DRIVE_OFF(axis))
                 raise DeviceMalfunctionError(f"Axis {perpendicular_axis} cannot be cleared")
         move_command = Commands.RELATIVE_MOVE if relative else Commands.MOVE
         await self.send_command(Commands.DRIVE_ON(axis))
         await self.send_command(move_command(axis, position))
-        try:
-            await self._movement_stopped()
-        except KeyboardInterrupt:
-            await self.send_command(Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)))
-            await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
-            await self.send_command(Commands.DRIVE_OFF(axis))
-            raise
+        await self._movement_stopped(axis)
         await self.send_command(Commands.DRIVE_OFF(axis))
         return
