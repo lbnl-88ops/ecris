@@ -54,11 +54,12 @@ class MotorController(TelnetDevice):
     async def send_command(self, command: str, return_type: None = None) -> None: ...
 
     async def send_command(self, command: str, return_type: Type[_T] | None = None) -> _T | None:
+        _log.debug(f"Sending command {command}")
         await self._write(command)
         raw_response = await self._read_until(self._prompt)
+        _log.debug(f"Raw response {raw_response}")
         if return_type is not None:
             response_lines = [ln.strip() for ln in raw_response.split("\r\n")]
-            print(f"{response_lines=}")
             response = [
                 ln for ln in response_lines if ln != self._prompt.strip() and ln != command
             ]
@@ -66,6 +67,7 @@ class MotorController(TelnetDevice):
                 raise RuntimeError(f"Unexpected response from Motor Controller: {response}")
             try:
                 value = response[0]
+                _log.debug(f"Processing return value {value}")
                 if return_type is bool:
                     match value.lower():
                         case "1" | "yes" | "true" | "on":
