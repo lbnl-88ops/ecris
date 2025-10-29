@@ -124,6 +124,9 @@ class MotorController(TelnetDevice):
 
     @with_lock_named("_move_lock")
     async def move_axis_to_positive_eof(self, axis):
+        await self._move_axis_to_positive_eof_unsafe(axis)
+
+    async def _move_axis_to_positive_eof_unsafe(self, axis):
         await self._move_to_position_unsafe(axis, 200)
         await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
         await self.send_command(Commands.DRIVE_OFF(axis))
@@ -131,7 +134,11 @@ class MotorController(TelnetDevice):
     @with_lock_named("_move_lock")
     async def center_axis(self, axis):
         if not await self.is_axis_clear_to_move(axis):
-            pass
+            perpendicular_axis = PERPENDICULAR_AXIS[axis]
+            await self._move_axis_to_positive_eof_unsafe(perpendicular_axis)
+            await self._movement_stopped(perpendicular_axis)
+            if not await self.is_axis_clear_to_move(axis):
+                pass
         if self.is_centered(axis):
             await self._move_to_position_unsafe(axis, 0)
             return

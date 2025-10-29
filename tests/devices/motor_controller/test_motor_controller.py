@@ -159,8 +159,8 @@ class TestAllAxes(MoveSequences):
         await motor.center_axis(axis)
         test.assert_passed()
 
-    @pytest.mark.skip
     async def test_centering_axis_not_clear(self, mock_motor_controller, axis):
+        motor: MotorController
         motor, _, _, _ = mock_motor_controller
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
 
@@ -195,7 +195,7 @@ class TestAllAxes(MoveSequences):
         )
 
         # The action is identical.
-        motor.centering(LEGACY_AXIS_MAPPING[axis])
+        await motor.center_axis(axis)
         test.assert_passed()
 
     @pytest.mark.skip
