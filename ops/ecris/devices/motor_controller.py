@@ -6,7 +6,7 @@ import asyncio
 
 from ops.ecris.utilities.decorators import with_lock_named
 from ops.ecris.model.device import TelnetDevice
-from .motor_controller_specification import Commands, Axis, PERPENDICULAR_AXIS
+from .motor_controller_specification import Commands, Axis, PERPENDICULAR_AXIS, Bit
 
 _log = getLogger(__name__)
 
@@ -83,8 +83,17 @@ class MotorController(TelnetDevice):
 
     @with_lock_named("_move_lock")
     async def move_to_position(self, axis: Axis, position: float, *, relative=False):
+        return await self._move_to_position_unsafe(axis, position, relative=relative)
+
+    async def _move_to_position_unsafe(self, axis: Axis, position: float, *, relative=False):
         if not await self.is_axis_clear_to_move(axis):
-            pass
+            perpendicular_axis = PERPENDICULAR_AXIS[axis]
+            await self._move_to_position_unsafe(perpendicular_axis, 200)
+            await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
+            await self.send_command(Commands.DRIVE_OFF(axis))
+            await self._movement_stopped()
+            if not await self.is_axis_clear_to_move(axis):
+                pass
         move_command = Commands.RELATIVE_MOVE if relative else Commands.MOVE
         await self.send_command(Commands.DRIVE_ON(axis))
         await self.send_command(move_command(axis, position))

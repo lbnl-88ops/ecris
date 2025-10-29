@@ -240,7 +240,6 @@ class TestMoveSequencesWithRelative(MoveSequences):
         await motor.move_to_position(axis, position_to_move, relative=relative)
         test.assert_passed()
 
-    @pytest.mark.skip
     async def test_move_to_axis_not_clear(self, mock_motor_controller, axis, relative):
         motor, _, _, _ = mock_motor_controller
         position_to_move = 15.5
