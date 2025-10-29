@@ -137,12 +137,11 @@ class TestAllAxes(MoveSequences):
         for a in Axis:
             assert motor.is_centered(a) == (a == axis)
 
-    @pytest.mark.skip
     async def test_centering_already_centered(self, mock_motor_controller, axis):
         motor: MotorController
         motor, _, _, _ = mock_motor_controller
         move_steps = [3]
-        motor.centered[LEGACY_AXIS_MAPPING[axis]] = True
+        motor._centered[axis] = True
 
         expected_commands = [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)] + self._move_to(
             axis, 0, move_steps[0]
@@ -157,7 +156,7 @@ class TestAllAxes(MoveSequences):
             expected_commands,
         )
 
-        motor.centering(LEGACY_AXIS_MAPPING[axis])
+        await motor.center_axis(axis)
         test.assert_passed()
 
     @pytest.mark.skip

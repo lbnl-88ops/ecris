@@ -132,6 +132,9 @@ class MotorController(TelnetDevice):
     async def center_axis(self, axis):
         if not await self.is_axis_clear_to_move(axis):
             pass
+        if self.is_centered(axis):
+            await self._move_to_position_unsafe(axis, 0)
+            return
         await self._move_to_position_unsafe(axis, -200)
         await self._movement_stopped(axis)
         await self._move_to_position_unsafe(axis, MID_POINT_OFFSETS[axis], relative=True)
