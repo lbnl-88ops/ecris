@@ -76,8 +76,11 @@ class MotorController(TelnetDevice):
 
     async def _movement_stopped(self):
         is_moving = True
-        while is_moving:
-            is_moving = await self.send_command(Commands.CHECK_IN_MOTION(), bool)
+        try:
+            while is_moving:
+                is_moving = await self.send_command(Commands.CHECK_IN_MOTION(), bool)
+        except KeyboardInterrupt:
+            raise
 
     async def is_axis_clear_to_move(self, axis: Axis) -> bool:
         return await self.send_command(Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis), bool)
@@ -99,6 +102,12 @@ class MotorController(TelnetDevice):
         move_command = Commands.RELATIVE_MOVE if relative else Commands.MOVE
         await self.send_command(Commands.DRIVE_ON(axis))
         await self.send_command(move_command(axis, position))
-        await self._movement_stopped()
+        try:
+            await self._movement_stopped()
+        except KeyboardInterrupt:
+            await self.send_command(Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)))
+            await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
+            await self.send_command(Commands.DRIVE_OFF(axis))
+            raise
         await self.send_command(Commands.DRIVE_OFF(axis))
         return

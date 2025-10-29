@@ -4,7 +4,12 @@ import pytest
 
 from ops.ecris.devices import DeviceMalfunctionError
 from ops.ecris.devices.motor_controller import MotorController
-from ops.ecris.devices.motor_controller_specification import Axis, Commands, PERPENDICULAR_AXIS
+from ops.ecris.devices.motor_controller_specification import (
+    Axis,
+    Commands,
+    PERPENDICULAR_AXIS,
+    Bit,
+)
 from tests.devices.motor_controller.helpers import set_up_test, MoveSequences, FakeState
 from .helpers import FakeMotorController
 
@@ -298,38 +303,34 @@ class TestMoveSequencesWithRelative(MoveSequences):
             await motor.move_to_position(axis, position_to_move, relative=relative)
         test.assert_passed()
 
+    async def test_move_to_axis_keyboard_interrupt(self, mock_motor_controller, axis, relative):
+        motor: MotorController
+        motor, _, _, _ = mock_motor_controller
+        position_to_move = 15.5
+        move_steps = [4, 3]
 
-#
-#     def test_move_to_axis_keyboard_interrupt(
-#         self, mock_motor_controller, axis, relative
-#     ):
-#         motor, _, _, _ = mock_motor_controller
-#         position_to_move = 15.5
-#         move_steps = [4, 3]
-#
-#         primary_move = self._move_to(axis, position_to_move, move_steps[1], relative)
-#         step_to_interrupt = 5
-#
-#         expected_commands = primary_move[:step_to_interrupt] + [
-#             Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)),
-#             Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)),
-#             Commands.DRIVE_OFF(axis),
-#         ]
-#
-#         test = set_up_test(
-#             mock_motor_controller,
-#             {
-#                 FakeState.MotionSteps: move_steps,
-#                 FakeState.DecrementMotionOnCheck: True,
-#                 FakeState.InterruptAfterCommands: (
-#                     step_to_interrupt,
-#                     KeyboardInterrupt,
-#                 ),
-#             },
-#             expected_commands,
-#         )
-#
-#         with pytest.raises(KeyboardInterrupt):
-#             action_to_perform = motor.relative_move if relative else motor.move_to
-#             action_to_perform(position_to_move, LEGACY_AXIS_MAPPING[axis])
-#         test.assert_passed()
+        primary_move = self._move_to(axis, position_to_move, move_steps[1], relative)
+        step_to_interrupt = 5
+
+        expected_commands = primary_move[:step_to_interrupt] + [
+            Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)),
+            Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)),
+            Commands.DRIVE_OFF(axis),
+        ]
+
+        test = set_up_test(
+            mock_motor_controller,
+            {
+                FakeState.MotionSteps: move_steps,
+                FakeState.DecrementMotionOnCheck: True,
+                FakeState.InterruptAfterCommands: (
+                    step_to_interrupt,
+                    KeyboardInterrupt,
+                ),
+            },
+            expected_commands,
+        )
+
+        with pytest.raises(KeyboardInterrupt):
+            await motor.move_to_position(axis, position_to_move, relative=relative)
+        test.assert_passed()
