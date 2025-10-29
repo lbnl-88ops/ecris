@@ -88,145 +88,148 @@ class TestAllAxes(MoveSequences):
         test.assert_passed()
         assert state == expected_state
 
-    # async def test_move_out(self, mock_motor_controller, axis):
-    #     motor, _, _, _ = mock_motor_controller
-    #     move_steps = 3
-    #     expected_commands = self._move_out_sequence(axis, move_steps)
-    #     test = set_up_test(
-    #         mock_motor_controller,
-    #         {
-    #             FakeState.MotionSteps: move_steps,
-    #             FakeState.DecrementMotionOnCheck: True,
-    #         },
-    #         expected_commands,
-    #     )
-    #
-    #     motor.move_axis_to_positive_eof(axis)
-    #
-    #     test.assert_passed()
-    #
+    async def test_move_to_positive_eof(self, mock_motor_controller, axis):
+        motor: MotorController
+        motor, _, _, _ = mock_motor_controller
+        move_steps = 3
+        expected_commands = self._move_out_sequence(axis, move_steps)
+        test = set_up_test(
+            mock_motor_controller,
+            {
+                FakeState.MotionSteps: move_steps,
+                FakeState.DecrementMotionOnCheck: True,
+            },
+            expected_commands,
+        )
+
+        await motor.move_axis_to_positive_eof(axis)
+
+        test.assert_passed()
+
+    @pytest.mark.skip
+    async def test_centering(self, mock_motor_controller, axis):
+        motor, _, _, _ = mock_motor_controller
+        move_steps = [3, 4]
+        coastdown = [1, 2]
+
+        expected_commands = (
+            [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
+            + self._move_to(axis, -200, move_steps[0])
+            + self._in_motion_check(coastdown[0])
+            + self._move_to(axis, MID_POINT_OFFSETS[axis], move_steps[1], relative=True)
+            + self._in_motion_check(coastdown[1])
+            + [Commands.RESET_AXIS(axis), Commands.DRIVE_OFF(axis)]
+        )
+
+        test = set_up_test(
+            mock_motor_controller,
+            {
+                FakeState.DecrementMotionOnCheck: True,
+                FakeState.MotionSteps: move_steps,
+                FakeState.CoastDownSteps: coastdown,
+            },
+            expected_commands,
+        )
+
+        motor.centering(LEGACY_AXIS_MAPPING[axis])
+        test.assert_passed()
+        for i, centered in enumerate(motor.centered):
+            if i == LEGACY_AXIS_MAPPING[axis]:
+                assert centered
+            else:
+                assert not centered
+
+    @pytest.mark.skip
+    async def test_centering_already_centered(self, mock_motor_controller, axis):
+        motor, _, _, _ = mock_motor_controller
+        move_steps = [3]
+        motor.centered[LEGACY_AXIS_MAPPING[axis]] = True
+
+        expected_commands = [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)] + self._move_to(
+            axis, 0, move_steps[0]
+        )
+
+        test = set_up_test(
+            mock_motor_controller,
+            {
+                FakeState.DecrementMotionOnCheck: True,
+                FakeState.MotionSteps: move_steps,
+            },
+            expected_commands,
+        )
+
+        motor.centering(LEGACY_AXIS_MAPPING[axis])
+        test.assert_passed()
+
+    @pytest.mark.skip
+    async def test_centering_axis_not_clear(self, mock_motor_controller, axis):
+        motor, _, _, _ = mock_motor_controller
+        perpendicular_axis = PERPENDICULAR_AXIS[axis]
+
+        # Define the physics for this specific test run
+        move_steps = [4, 5, 6]
+        coastdown_steps = [1, 2, 3]
+
+        # The test now reads like a story, composing physical primitives.
+        expected_commands = (
+            [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
+            + self._move_out_sequence(perpendicular_axis, move_steps[0])
+            + self._in_motion_check(coastdown_steps[0])
+            + [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]  # The final safety check
+            + self._move_to(axis, -200, move_steps[1])
+            + self._in_motion_check(coastdown_steps[1])
+            + self._move_to(axis, MID_POINT_OFFSETS[axis], move_steps[2], relative=True)
+            + self._in_motion_check(coastdown_steps[2])
+            + [Commands.RESET_AXIS(axis), Commands.DRIVE_OFF(axis)]
+        )
+
+        # The setup is identical.
+        test = set_up_test(
+            mock_motor_controller,
+            {
+                FakeState.DecrementMotionOnCheck: True,
+                FakeState.MotionSteps: move_steps,
+                FakeState.AxisNotClear: perpendicular_axis,
+                FakeState.ClearAxisOnStop: perpendicular_axis,
+                FakeState.CoastDownSteps: coastdown_steps,
+            },
+            expected_commands,
+        )
+
+        # The action is identical.
+        motor.centering(LEGACY_AXIS_MAPPING[axis])
+        test.assert_passed()
+
+    @pytest.mark.skip
+    async def test_centering_axis_cant_clear(self, mock_motor_controller, axis):
+        motor, _, _, _ = mock_motor_controller
+        move_steps = [2, 3, 4]
+        perpendicular_axis = PERPENDICULAR_AXIS[axis]
+
+        expected_commands = (
+            [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
+            + self._move_out_sequence(PERPENDICULAR_AXIS[axis], move_steps[0])
+            + [
+                Commands.CHECK_IN_MOTION(),
+                Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis),
+                Commands.DRIVE_OFF(axis),
+            ]
+        )
+
+        test = set_up_test(
+            mock_motor_controller,
+            {
+                FakeState.DecrementMotionOnCheck: True,
+                FakeState.MotionSteps: move_steps,
+                FakeState.AxisNotClear: perpendicular_axis,
+            },
+            expected_commands,
+        )
+        with pytest.raises(DeviceMalfunctionError):
+            motor.centering(LEGACY_AXIS_MAPPING[axis])
+        test.assert_passed()
 
 
-#     def test_centering(self, mock_motor_controller, axis):
-#         motor, _, _, _ = mock_motor_controller
-#         move_steps = [3, 4]
-#         coastdown = [1, 2]
-#
-#         expected_commands = (
-#             [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
-#             + self._move_to(axis, -200, move_steps[0])
-#             + self._in_motion_check(coastdown[0])
-#             + self._move_to(axis, MID_POINT_OFFSETS[axis], move_steps[1], relative=True)
-#             + self._in_motion_check(coastdown[1])
-#             + [Commands.RESET_AXIS(axis), Commands.DRIVE_OFF(axis)]
-#         )
-#
-#         test = set_up_test(
-#             mock_motor_controller,
-#             {
-#                 FakeState.DecrementMotionOnCheck: True,
-#                 FakeState.MotionSteps: move_steps,
-#                 FakeState.CoastDownSteps: coastdown,
-#             },
-#             expected_commands,
-#         )
-#
-#         motor.centering(LEGACY_AXIS_MAPPING[axis])
-#         test.assert_passed()
-#         for i, centered in enumerate(motor.centered):
-#             if i == LEGACY_AXIS_MAPPING[axis]:
-#                 assert centered
-#             else:
-#                 assert not centered
-#
-#     def test_centering_already_centered(self, mock_motor_controller, axis):
-#         motor, _, _, _ = mock_motor_controller
-#         move_steps = [3]
-#         motor.centered[LEGACY_AXIS_MAPPING[axis]] = True
-#
-#         expected_commands = [
-#             Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)
-#         ] + self._move_to(axis, 0, move_steps[0])
-#
-#         test = set_up_test(
-#             mock_motor_controller,
-#             {
-#                 FakeState.DecrementMotionOnCheck: True,
-#                 FakeState.MotionSteps: move_steps,
-#             },
-#             expected_commands,
-#         )
-#
-#         motor.centering(LEGACY_AXIS_MAPPING[axis])
-#         test.assert_passed()
-#
-#     def test_centering_axis_not_clear(self, mock_motor_controller, axis):
-#         motor, _, _, _ = mock_motor_controller
-#         perpendicular_axis = PERPENDICULAR_AXIS[axis]
-#
-#         # Define the physics for this specific test run
-#         move_steps = [4, 5, 6]
-#         coastdown_steps = [1, 2, 3]
-#
-#         # The test now reads like a story, composing physical primitives.
-#         expected_commands = (
-#             [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
-#             + self._move_out_sequence(perpendicular_axis, move_steps[0])
-#             + self._in_motion_check(coastdown_steps[0])
-#             + [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]  # The final safety check
-#             + self._move_to(axis, -200, move_steps[1])
-#             + self._in_motion_check(coastdown_steps[1])
-#             + self._move_to(axis, MID_POINT_OFFSETS[axis], move_steps[2], relative=True)
-#             + self._in_motion_check(coastdown_steps[2])
-#             + [Commands.RESET_AXIS(axis), Commands.DRIVE_OFF(axis)]
-#         )
-#
-#         # The setup is identical.
-#         test = set_up_test(
-#             mock_motor_controller,
-#             {
-#                 FakeState.DecrementMotionOnCheck: True,
-#                 FakeState.MotionSteps: move_steps,
-#                 FakeState.AxisNotClear: perpendicular_axis,
-#                 FakeState.ClearAxisOnStop: perpendicular_axis,
-#                 FakeState.CoastDownSteps: coastdown_steps,
-#             },
-#             expected_commands,
-#         )
-#
-#         # The action is identical.
-#         motor.centering(LEGACY_AXIS_MAPPING[axis])
-#         test.assert_passed()
-#
-#     def test_centering_axis_cant_clear(self, mock_motor_controller, axis):
-#         motor, _, _, _ = mock_motor_controller
-#         move_steps = [2, 3, 4]
-#         perpendicular_axis = PERPENDICULAR_AXIS[axis]
-#
-#         expected_commands = (
-#             [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
-#             + self._move_out_sequence(PERPENDICULAR_AXIS[axis], move_steps[0])
-#             + [
-#                 Commands.CHECK_IN_MOTION(),
-#                 Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis),
-#                 Commands.DRIVE_OFF(axis),
-#             ]
-#         )
-#
-#         test = set_up_test(
-#             mock_motor_controller,
-#             {
-#                 FakeState.DecrementMotionOnCheck: True,
-#                 FakeState.MotionSteps: move_steps,
-#                 FakeState.AxisNotClear: perpendicular_axis,
-#             },
-#             expected_commands,
-#         )
-#         with pytest.raises(FatalError):
-#             motor.centering(LEGACY_AXIS_MAPPING[axis])
-#         test.assert_passed()
-#
-#
 @pytest.mark.asyncio
 @pytest.mark.parametrize("axis", ALL_AXES)
 @pytest.mark.parametrize("relative", [False, True])

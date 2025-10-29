@@ -111,3 +111,9 @@ class MotorController(TelnetDevice):
         await self._movement_stopped(axis)
         await self.send_command(Commands.DRIVE_OFF(axis))
         return
+
+    @with_lock_named("_move_lock")
+    async def move_axis_to_positive_eof(self, axis):
+        await self._move_to_position_unsafe(axis, 200)
+        await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
+        await self.send_command(Commands.DRIVE_OFF(axis))
