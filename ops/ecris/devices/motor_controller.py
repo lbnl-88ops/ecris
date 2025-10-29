@@ -88,6 +88,8 @@ class MotorController(TelnetDevice):
         try:
             while is_moving:
                 is_moving = await self.send_command(Commands.CHECK_IN_MOTION(), bool)
+                # Prevent busy-wait condition (constantly pinging the controller)
+                await asyncio.sleep(0.1)
         except KeyboardInterrupt:
             if axis is not None:
                 await self.send_command(Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)))
@@ -97,7 +99,11 @@ class MotorController(TelnetDevice):
             else:
                 raise
 
+    @with_lock_named("_move_lock")
     async def is_axis_clear_to_move(self, axis: Axis) -> bool:
+        return await self._is_axis_clear_to_move_unsafe(axis)
+
+    async def _is_axis_clear_to_move_unsafe(self, axis: Axis) -> bool:
         return await self.send_command(Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis), bool)
 
     @with_lock_named("_move_lock")
@@ -105,13 +111,13 @@ class MotorController(TelnetDevice):
         return await self._move_to_position_unsafe(axis, position, relative=relative)
 
     async def _move_to_position_unsafe(self, axis: Axis, position: float, *, relative=False):
-        if not await self.is_axis_clear_to_move(axis):
+        if not await self._is_axis_clear_to_move_unsafe(axis):
             perpendicular_axis = PERPENDICULAR_AXIS[axis]
             await self._move_to_position_unsafe(perpendicular_axis, 200)
             await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
             await self.send_command(Commands.DRIVE_OFF(axis))
             await self._movement_stopped(perpendicular_axis)
-            if not await self.is_axis_clear_to_move(axis):
+            if not await self._is_axis_clear_to_move_unsafe(axis):
                 await self.send_command(Commands.DRIVE_OFF(axis))
                 raise DeviceMalfunctionError(f"Axis {perpendicular_axis} cannot be cleared")
         move_command = Commands.RELATIVE_MOVE if relative else Commands.MOVE
@@ -132,11 +138,11 @@ class MotorController(TelnetDevice):
 
     @with_lock_named("_move_lock")
     async def center_axis(self, axis):
-        if not await self.is_axis_clear_to_move(axis):
+        if not await self._is_axis_clear_to_move_unsafe(axis):
             perpendicular_axis = PERPENDICULAR_AXIS[axis]
             await self._move_axis_to_positive_eof_unsafe(perpendicular_axis)
             await self._movement_stopped(perpendicular_axis)
-            if not await self.is_axis_clear_to_move(axis):
+            if not await self._is_axis_clear_to_move_unsafe(axis):
                 await self.send_command(Commands.DRIVE_OFF(axis))
                 raise DeviceMalfunctionError(f"Axis {axis} cannot be cleared")
         if self.is_centered(axis):
