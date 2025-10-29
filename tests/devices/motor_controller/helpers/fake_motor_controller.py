@@ -24,10 +24,10 @@ class FakeMotorController:
             self._unit_distance = -1
 
         self.axis_clear_states = {
-            Axis.X: True,
-            Axis.Y: True,
-            Axis.Z: True,
-            Axis.A: True,
+            Axis.VenusX: True,
+            Axis.VenusY: True,
+            Axis.AcerX: True,
+            Axis.AcerY: True,
         }  # Default to clear
 
         self._prompt = "SYS> "
@@ -119,13 +119,13 @@ class FakeMotorController:
             queried_bit = int(command.removeprefix("?BIT(")[:-1])
             match queried_bit:
                 case 16128:
-                    command_return = int(self.axis_clear_states[Axis.X])
+                    command_return = int(self.axis_clear_states[Axis.VenusX])
                 case 16160:
-                    command_return = int(self.axis_clear_states[Axis.Y])
+                    command_return = int(self.axis_clear_states[Axis.VenusY])
                 case 16192:
-                    command_return = int(self.axis_clear_states[Axis.Z])
+                    command_return = int(self.axis_clear_states[Axis.AcerX])
                 case 16224:
-                    command_return = int(self.axis_clear_states[Axis.A])
+                    command_return = int(self.axis_clear_states[Axis.AcerY])
                 case 516:
                     command_return = int(self._current_motion_steps > 0)
                     self._move()

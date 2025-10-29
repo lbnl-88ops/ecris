@@ -15,7 +15,7 @@ import pytest
 
 MODULE = "ops.ecris.legacy.emittance_scan."
 
-ALL_AXES = [Axis.X, Axis.Y, Axis.Z, Axis.A]
+ALL_AXES = [Axis.VenusX, Axis.VenusY, Axis.AcerX, Axis.AcerY]
 
 
 @pytest.fixture
@@ -34,9 +34,7 @@ def mock_motor_controller_no_reset():
 
 @pytest.fixture
 def mock_motor_controller(mock_motor_controller_no_reset):
-    initialized_motor, fake_controller, mock_telnet, mock_sleep = (
-        mock_motor_controller_no_reset
-    )
+    initialized_motor, fake_controller, mock_telnet, mock_sleep = mock_motor_controller_no_reset
     mock_sleep.reset_mock()
     fake_controller.post_init_reset()
 
@@ -135,9 +133,9 @@ class TestAllAxes(MoveSequences):
         move_steps = [3]
         motor.centered[LEGACY_AXIS_MAPPING[axis]] = True
 
-        expected_commands = [
-            Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)
-        ] + self._move_to(axis, 0, move_steps[0])
+        expected_commands = [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)] + self._move_to(
+            axis, 0, move_steps[0]
+        )
 
         test = set_up_test(
             mock_motor_controller,
@@ -244,14 +242,10 @@ class TestMoveSequencesWithRelative(MoveSequences):
         move_steps = [2, 3]
         coastdown_steps = [1]
         clearing_move = self._move_to(perpendicular_axis, 200, move_steps[0])
-        cleanup = self._cleanup_after_limit_sequence(
-            axis, coastdown_steps=coastdown_steps[0]
-        )
+        cleanup = self._cleanup_after_limit_sequence(axis, coastdown_steps=coastdown_steps[0])
         primary_move = self._move_to(axis, position_to_move, move_steps[1], relative)
 
-        expected_commands = (
-            [primary_move[0]] + clearing_move + cleanup + primary_move[1:]
-        )
+        expected_commands = [primary_move[0]] + clearing_move + cleanup + primary_move[1:]
 
         test = set_up_test(
             mock_motor_controller,
@@ -299,9 +293,7 @@ class TestMoveSequencesWithRelative(MoveSequences):
             action_to_perform(position_to_move, LEGACY_AXIS_MAPPING[axis])
         test.assert_passed()
 
-    def test_move_to_axis_keyboard_interrupt(
-        self, mock_motor_controller, axis, relative
-    ):
+    def test_move_to_axis_keyboard_interrupt(self, mock_motor_controller, axis, relative):
         motor, _, _, _ = mock_motor_controller
         position_to_move = 15.5
         move_steps = [4, 3]

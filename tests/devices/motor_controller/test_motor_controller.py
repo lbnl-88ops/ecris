@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock, mock_open, patch, AsyncMock, call
-
+import asyncio
 import pytest
 
 from ops.ecris.devices import DeviceMalfunctionError
@@ -15,7 +15,7 @@ from tests.devices.motor_controller.helpers import set_up_test, MoveSequences, F
 from .helpers import FakeMotorController
 
 
-ALL_AXES = [Axis.X, Axis.Y, Axis.Z, Axis.A]
+ALL_AXES = [Axis.VenusX, Axis.VenusY, Axis.AcerX, Axis.AcerY]
 
 DEVICE_MODULE = "ops.ecris.model.device."
 MODULE = "ops.ecris.devices.motor_controller."
