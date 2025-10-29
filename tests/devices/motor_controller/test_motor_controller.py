@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, mock_open, patch, AsyncMock, call
 
 import pytest
 
+from ops.ecris.devices import DeviceMalfunctionError
 from ops.ecris.devices.motor_controller import MotorController
 from ops.ecris.devices.motor_controller_specification import Axis, Commands, PERPENDICULAR_AXIS
 from tests.devices.motor_controller.helpers import set_up_test, MoveSequences, FakeState
@@ -267,37 +268,37 @@ class TestMoveSequencesWithRelative(MoveSequences):
         await motor.move_to_position(axis, position_to_move, relative=relative)
         test.assert_passed()
 
+    async def test_move_to_axis_cannot_clear(self, mock_motor_controller, axis, relative):
+        motor: MotorController
+        motor, _, _, _ = mock_motor_controller
+        position_to_move = 15.5
+        perpendicular_axis = PERPENDICULAR_AXIS[axis]
+        move_steps = [4, 3]
 
-#
-#     def test_move_to_axis_cannot_clear(self, mock_motor_controller, axis, relative):
-#         motor, _, _, _ = mock_motor_controller
-#         position_to_move = 15.5
-#         perpendicular_axis = PERPENDICULAR_AXIS[axis]
-#         move_steps = [4, 3]
-#
-#         clearing_move = self._move_to(perpendicular_axis, 200, move_steps[0])
-#         cleanup = self._cleanup_after_limit_sequence(axis)
-#         primary_move = self._move_to(axis, position_to_move, move_steps[1], relative)
-#
-#         expected_commands = (
-#             [primary_move[0]] + clearing_move + cleanup + [Commands.DRIVE_OFF(axis)]
-#         )  # Drive off due to error
-#
-#         test = set_up_test(
-#             mock_motor_controller,
-#             {
-#                 FakeState.AxisNotClear: perpendicular_axis,
-#                 FakeState.MotionSteps: move_steps,
-#                 FakeState.DecrementMotionOnCheck: True,
-#                 FakeState.ClearAxisOnStop: None,
-#             },
-#             expected_commands,
-#         )
-#
-#         with pytest.raises(FatalError):
-#             action_to_perform = motor.relative_move if relative else motor.move_to
-#             action_to_perform(position_to_move, LEGACY_AXIS_MAPPING[axis])
-#         test.assert_passed()
+        clearing_move = self._move_to(perpendicular_axis, 200, move_steps[0])
+        cleanup = self._cleanup_after_limit_sequence(axis)
+        primary_move = self._move_to(axis, position_to_move, move_steps[1], relative)
+
+        expected_commands = (
+            [primary_move[0]] + clearing_move + cleanup + [Commands.DRIVE_OFF(axis)]
+        )  # Drive off due to error
+
+        test = set_up_test(
+            mock_motor_controller,
+            {
+                FakeState.AxisNotClear: perpendicular_axis,
+                FakeState.MotionSteps: move_steps,
+                FakeState.DecrementMotionOnCheck: True,
+                FakeState.ClearAxisOnStop: None,
+            },
+            expected_commands,
+        )
+
+        with pytest.raises(DeviceMalfunctionError):
+            await motor.move_to_position(axis, position_to_move, relative=relative)
+        test.assert_passed()
+
+
 #
 #     def test_move_to_axis_keyboard_interrupt(
 #         self, mock_motor_controller, axis, relative

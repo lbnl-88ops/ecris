@@ -7,6 +7,7 @@ import asyncio
 from ops.ecris.utilities.decorators import with_lock_named
 from ops.ecris.model.device import TelnetDevice
 from .motor_controller_specification import Commands, Axis, PERPENDICULAR_AXIS, Bit
+from .exceptions import DeviceMalfunctionError
 
 _log = getLogger(__name__)
 
@@ -93,7 +94,8 @@ class MotorController(TelnetDevice):
             await self.send_command(Commands.DRIVE_OFF(axis))
             await self._movement_stopped()
             if not await self.is_axis_clear_to_move(axis):
-                pass
+                await self.send_command(Commands.DRIVE_OFF(axis))
+                raise DeviceMalfunctionError(f"Axis {perpendicular_axis} cannot be cleared")
         move_command = Commands.RELATIVE_MOVE if relative else Commands.MOVE
         await self.send_command(Commands.DRIVE_ON(axis))
         await self.send_command(move_command(axis, position))
