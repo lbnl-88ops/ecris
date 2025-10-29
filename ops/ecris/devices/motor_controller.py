@@ -6,7 +6,13 @@ import asyncio
 
 from ops.ecris.utilities.decorators import with_lock_named
 from ops.ecris.model.device import TelnetDevice
-from .motor_controller_specification import Commands, Axis, PERPENDICULAR_AXIS, Bit
+from .motor_controller_specification import (
+    MID_POINT_OFFSETS,
+    Commands,
+    Axis,
+    PERPENDICULAR_AXIS,
+    Bit,
+)
 from .exceptions import DeviceMalfunctionError
 
 _log = getLogger(__name__)
@@ -25,6 +31,10 @@ class MotorController(TelnetDevice):
     ):
         super().__init__(id, ip, port, prompt, encoding)
         self._move_lock = asyncio.Lock()
+        self._centered = {a: False for a in Axis}
+
+    def is_centered(self, axis: Axis) -> bool:
+        return self._centered[axis]
 
     async def read_data(self, data_key: Any) -> float:
         raise NotImplementedError
@@ -74,7 +84,7 @@ class MotorController(TelnetDevice):
         await self.send_command(Commands.OPEN_PROGRAM0)
         await self.send_command(Commands.SET_RAMPING)
 
-    async def _movement_stopped(self, axis: Axis | None):
+    async def _movement_stopped(self, axis: Axis | None = None):
         is_moving = True
         try:
             while is_moving:
@@ -117,3 +127,15 @@ class MotorController(TelnetDevice):
         await self._move_to_position_unsafe(axis, 200)
         await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
         await self.send_command(Commands.DRIVE_OFF(axis))
+
+    @with_lock_named("_move_lock")
+    async def center_axis(self, axis):
+        if not await self.is_axis_clear_to_move(axis):
+            pass
+        await self._move_to_position_unsafe(axis, -200)
+        await self._movement_stopped(axis)
+        await self._move_to_position_unsafe(axis, MID_POINT_OFFSETS[axis], relative=True)
+        await self._movement_stopped(axis)
+        await self.send_command(Commands.RESET_AXIS(axis))
+        await self.send_command(Commands.DRIVE_OFF(axis))
+        self._centered[axis] = True

@@ -9,6 +9,7 @@ from ops.ecris.devices.motor_controller_specification import (
     Commands,
     PERPENDICULAR_AXIS,
     Bit,
+    MID_POINT_OFFSETS,
 )
 from tests.devices.motor_controller.helpers import set_up_test, MoveSequences, FakeState
 from .helpers import FakeMotorController
@@ -106,8 +107,8 @@ class TestAllAxes(MoveSequences):
 
         test.assert_passed()
 
-    @pytest.mark.skip
     async def test_centering(self, mock_motor_controller, axis):
+        motor: MotorController
         motor, _, _, _ = mock_motor_controller
         move_steps = [3, 4]
         coastdown = [1, 2]
@@ -131,16 +132,14 @@ class TestAllAxes(MoveSequences):
             expected_commands,
         )
 
-        motor.centering(LEGACY_AXIS_MAPPING[axis])
+        await motor.center_axis(axis)
         test.assert_passed()
-        for i, centered in enumerate(motor.centered):
-            if i == LEGACY_AXIS_MAPPING[axis]:
-                assert centered
-            else:
-                assert not centered
+        for a in Axis:
+            assert motor.is_centered(a) == (a == axis)
 
     @pytest.mark.skip
     async def test_centering_already_centered(self, mock_motor_controller, axis):
+        motor: MotorController
         motor, _, _, _ = mock_motor_controller
         move_steps = [3]
         motor.centered[LEGACY_AXIS_MAPPING[axis]] = True
