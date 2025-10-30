@@ -38,6 +38,8 @@ class Bit:
 
 
 class Commands(StrEnum):
+    GET_FIRMWARE_VERSION = "VER"
+    GET_ATTACHMENTS = "ATTACH"
     OPEN_PROGRAM0 = "PROG0"
     SET_RAMPING = "ACC 5 DEC 5 VEL 15 STP 100"
 

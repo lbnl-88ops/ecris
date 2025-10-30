@@ -1,7 +1,7 @@
 import asyncio
 from enum import StrEnum, Enum, auto
 from logging import getLogger
-from typing import Any, List, Type, TypeVar, overload, Literal
+from typing import Any, List, Type, TypeVar, overload, Literal, get_origin, get_args
 import asyncio
 
 from ops.ecris.utilities.decorators import with_lock_named
@@ -45,6 +45,7 @@ class MotorController(TelnetDevice):
     async def connect(self) -> None:
         _log.debug(f"Connecting Motor Controller at {self._host}")
         await super().connect()
+        await self._verify_handshake()
         await self._setup()
 
     @overload
@@ -63,22 +64,50 @@ class MotorController(TelnetDevice):
             response = [
                 ln for ln in response_lines if ln != self._prompt.strip() and ln != command
             ]
-            if len(response) != 1:
+            if len(response) == 0:
                 raise RuntimeError(f"Unexpected response from Motor Controller: {response}")
-            try:
+            elif len(response) == 1:
                 value = response[0]
-                _log.debug(f"Processing return value {value}")
-                if return_type is bool:
-                    match value.lower():
-                        case "1" | "yes" | "true" | "on":
-                            return return_type(True)
-                        case "0" | "no" | "off" | "false":
-                            return return_type(False)
-                        case _:
-                            raise ValueError(f"Unrecognized boolean value {value}")
-                return return_type(value)
-            except ValueError:
-                raise RuntimeError(f"Could not convert {response=} to type {return_type.__name__}")
+                try:
+                    _log.debug(f"Processing return value {value}")
+                    if return_type is bool:
+                        match value.lower():
+                            case "1" | "yes" | "true" | "on":
+                                return return_type(True)
+                            case "0" | "no" | "off" | "false":
+                                return return_type(False)
+                            case _:
+                                raise ValueError(f"Unrecognized boolean value {value}")
+                    return return_type(value)
+                except ValueError:
+                    raise RuntimeError(
+                        f"Could not convert {response=} to type {return_type.__name__}"
+                    )
+            elif len(response) > 1:
+                if get_origin(return_type) is not List:
+                    raise RuntimeError(
+                        f"Multi-line response returned but expected return type was not list"
+                    )
+                line_type = get_args(return_type)
+                if len(line_type) != 1:
+                    raise ValueError(
+                        f"Unexpected type passed: {return_type.__name__}, expected List[_]"
+                    )
+                line_type = line_type[0]
+                return [line_type(line) for line in response]
+
+    async def _verify_handshake(self):
+        """Sends commands to verify connection and logs device info."""
+        try:
+            firmware_version = await self.send_command(Commands.GET_FIRMWARE_VERSION, str)
+            attachment_list = await self.send_command(Commands.GET_ATTACHMENTS, List[str])
+            attachments_str = "\n".join(attachment_list)
+            _log.info(f"Connection to {self.id} verified, firmware version {firmware_version}")
+            _log.info(f"Configured attachments:\n{attachments_str}")
+
+        except (RuntimeError, ConnectionError) as e:
+            _log.error("Handshake with motor controller failed.", exc_info=True)
+            raise ConnectionError("Handshake not verified, check driver configuration.") from e
 
     async def _setup(self) -> None:
         self._prompt = "P00> "
