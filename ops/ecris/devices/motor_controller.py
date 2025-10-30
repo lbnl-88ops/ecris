@@ -59,42 +59,47 @@ class MotorController(TelnetDevice):
         await self._write(command)
         raw_response = await self._read_until(self._prompt)
         _log.debug(f"Raw response {raw_response}")
+
         if return_type is not None:
             response_lines = [ln.strip() for ln in raw_response.split("\r\n")]
-            response = [
-                ln for ln in response_lines if ln != self._prompt.strip() and ln != command
+            data_lines = [
+                ln for ln in response_lines if ln and ln != self._prompt.strip() and ln != command
             ]
-            if len(response) == 0:
-                raise RuntimeError(f"Unexpected response from Motor Controller: {response}")
-            elif len(response) == 1:
-                value = response[0]
+
+            if get_origin(return_type) is list:
+                line_type_args = get_args(return_type)
+
+                if not line_type_args:
+                    raise TypeError("List return type must be subscripted, e.g., List[str]")
+
+                line_type = line_type_args[0]
+                return [line_type(line) for line in data_lines]
+
+            elif len(data_lines) == 1:
+                value = data_lines[0]
                 try:
                     _log.debug(f"Processing return value {value}")
                     if return_type is bool:
                         match value.lower():
                             case "1" | "yes" | "true" | "on":
-                                return return_type(True)
+                                return return_type(1)  # Use 1 for True to satisfy TypeVar
                             case "0" | "no" | "off" | "false":
-                                return return_type(False)
+                                return return_type(0)  # Use 0 for False to satisfy TypeVar
                             case _:
                                 raise ValueError(f"Unrecognized boolean value {value}")
                     return return_type(value)
-                except ValueError:
+                except (ValueError, TypeError) as e:
                     raise RuntimeError(
-                        f"Could not convert {response=} to type {return_type.__name__}"
-                    )
-            elif len(response) > 1:
-                if get_origin(return_type) is not List:
-                    raise RuntimeError(
-                        f"Multi-line response returned but expected return type was not list"
-                    )
-                line_type = get_args(return_type)
-                if len(line_type) != 1:
-                    raise ValueError(
-                        f"Unexpected type passed: {return_type.__name__}, expected List[_]"
-                    )
-                line_type = line_type[0]
-                return [line_type(line) for line in response]
+                        f"Could not convert response '{value}' to type {return_type.__name__}"
+                    ) from e
+
+            else:
+                raise RuntimeError(
+                    f"Expected a single-line response for type '{return_type.__name__}' "
+                    f"but received {len(data_lines)} lines: {data_lines}"
+                )
+
+        return None  # No return_type was specified
 
     async def _verify_handshake(self):
         """Sends commands to verify connection and logs device info."""

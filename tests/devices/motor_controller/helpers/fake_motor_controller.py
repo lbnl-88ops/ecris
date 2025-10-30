@@ -129,6 +129,10 @@ class FakeMotorController:
                 case 516:
                     command_return = int(self._current_motion_steps > 0)
                     self._move()
+        elif command == "VER":
+            command_return = "1.0.0"
+        elif command == "ATTACH":
+            command_return = 'ATTACH MASTER0\r\nATTACH SLAVE0 AXIS0 "X"\r\nATTACH SLAVE1 AXIS1 "Y"\r\nATTACH SLAVE2 AXIS2 "Z"\r\nATTACH SLAVE3 AXIS3 "A"'
         elif (
             command.startswith("X")
             or command.startswith("Y")
@@ -140,10 +144,6 @@ class FakeMotorController:
             if self.coastdown_steps_remaining and not self.coasting_down:
                 self.coasting_down = True
                 self._current_motion_steps = self.coastdown_steps_remaining.pop(0)
-        elif command == "VER":
-            command_return = "1.0.0"
-        elif command == "ATTACH":
-            command_return = 'ATTACH MASTER0\r\nATTACH SLAVE0 AXIS0 "X"\r\nATTACH SLAVE1 AXIS1 "Y"\r\nATTACH SLAVE2 AXIS2 "Z"\r\nATTACH SLAVE3 AXIS3 "A"'
 
         if command_return is not None:
             self._to_buffer(command + "\r\n" + str(command_return))
