@@ -46,6 +46,9 @@ class MotorController(TelnetDevice):
         _log.debug(f"Connecting Motor Controller at {self._host}")
         await super().connect()
 
+    async def _clear_buffer(self):
+        await self._read_until(self._prompt)
+
     @overload
     async def send_command(self, command: str, return_type: Type[_T]) -> _T: ...
 
@@ -106,6 +109,7 @@ class MotorController(TelnetDevice):
         except TimeoutError:
             _log.debug("Wakeup timed out, controller may already be in program mode, reattempting")
             self._prompt = "P00>"
+            await self._clear_buffer()
             await asyncio.wait_for(self.send_command(""), timeout=3.0)
         try:
             firmware_version = await self.send_command(Commands.GET_FIRMWARE_VERSION, List[str])
