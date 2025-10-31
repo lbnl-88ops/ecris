@@ -26,7 +26,7 @@ class MotorController(TelnetDevice):
         id: str = "ACR74C",
         ip: str | None = None,
         port: int | None = None,
-        prompt: str = "SYS> ",
+        prompt: str = "SYS>",
         encoding: str = "ascii",
     ):
         super().__init__(id, ip, port, prompt, encoding)
@@ -42,10 +42,12 @@ class MotorController(TelnetDevice):
     async def write_data(self, data_key: Any, value: float) -> None:
         raise NotImplementedError
 
-    async def connect(self) -> None:
+    async def connect(self, wakeup_required=True) -> None:
         _log.debug(f"Connecting Motor Controller at {self._host}")
-        await super().connect()
+        await super().connect(wakeup_required)
+        _log.debug("Verifying handshake")
         await self._verify_handshake()
+        _log.debug("Running setup")
         await self._setup()
 
     @overload
