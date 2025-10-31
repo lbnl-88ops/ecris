@@ -14,6 +14,8 @@ COMMAND_MAP = {
     "is_clear": ("is_axis_clear_to_move", [Axis]),
     "is_centered": ("is_centered", [Axis]),
     "move_eof": ("move_axis_to_positive_eof", [Axis]),
+    "pos": ("get_position", [Axis]),
+    "scale": ("get_scale", []),
 }
 
 
@@ -26,6 +28,8 @@ def print_help():
     print("  center <axis>                - Center the specified axis (e.g., center A)")
     print("  is_clear <axis>              - Check if the perpendicular axis is clear")
     print("  is_centered <axis>           - Check if the axis has been centered")
+    print("  pos <axis>                   - Get axis position")
+    print("  scale                        - Get scale")
     print("  help                         - Show this message")
     print("  quit / exit                  - Disconnect and close the application\n")
 

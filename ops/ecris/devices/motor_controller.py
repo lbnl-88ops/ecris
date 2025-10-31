@@ -144,6 +144,12 @@ class MotorController(TelnetDevice):
             else:
                 raise
 
+    async def get_position(self, axis: Axis) -> float:
+        return await self.send_command(Commands.GET_POSITION(axis), float)
+
+    async def get_scale(self) -> float:
+        return await self.send_command(Commands.GET_SCALE, float)
+
     @with_lock_named("_move_lock")
     async def is_axis_clear_to_move(self, axis: Axis) -> bool:
         return await self._is_axis_clear_to_move_unsafe(axis)

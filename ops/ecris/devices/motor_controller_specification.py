@@ -36,12 +36,21 @@ class Bit:
     def KILL_ALL_MOVES(axis: Axis) -> int:
         return 8467 + _AXIS_BIT_MAP[axis] * 32
 
+    @staticmethod
+    def POSITION_BIT(axis: Axis) -> int:
+        return 12288 + _AXIS_BIT_MAP[axis] * 256
+
 
 class Commands(StrEnum):
     GET_FIRMWARE_VERSION = "VER"
     GET_ATTACHMENTS = "ATTACH"
     OPEN_PROGRAM0 = "PROG0"
     SET_RAMPING = "ACC 5 DEC 5 VEL 15 STP 100"
+    GET_SCALE = "SCALE"
+
+    @staticmethod
+    def GET_POSITION(axis: Axis) -> str:
+        return f"?P({Bit.POSITION_BIT(axis)})"
 
     @staticmethod
     def QUERY_BIT(bit: int) -> str:
