@@ -13,6 +13,7 @@ COMMAND_MAP = {
     "center": ("center_axis", [Axis]),
     "is_clear": ("is_axis_clear_to_move", [Axis]),
     "is_centered": ("is_centered", [Axis]),
+    "move_eof": ("move_axis_to_positive_eof", [Axis]),
 }
 
 
@@ -21,6 +22,7 @@ def print_help():
     print("\nAvailable Commands:")
     print("  move <axis> <position>         - Move to absolute position (e.g., move A 15.5)")
     print("  rmove <axis> <distance>        - Move by a relative distance (e.g., rmove Z -10)")
+    print("  move_eof <axis>")
     print("  center <axis>                - Center the specified axis (e.g., center A)")
     print("  is_clear <axis>              - Check if the perpendicular axis is clear")
     print("  is_centered <axis>           - Check if the axis has been centered")
@@ -53,7 +55,7 @@ async def _parse_and_execute(controller: MotorController, user_input: str):
     args = []
     for raw_arg, arg_type in zip(raw_args, expected_types):
         if arg_type is Axis:
-            args.append(Axis[raw_arg.upper()])
+            args.append(Axis(raw_arg.upper()))
         else:
             args.append(arg_type(raw_arg))
 
@@ -67,7 +69,7 @@ async def run_interactive_test(host: str, port: int):
     controller = MotorController(ip=host, port=port)
     try:
         _log.info(f"Attempting to connect to motor controller at {host}:{port}...")
-        await asyncio.wait_for(controller.connect(), timeout=3.0)
+        await asyncio.wait_for(controller.connect(), timeout=20.0)
         _log.info("Successfully connected to motor controller.")
         print_help()
 
@@ -106,8 +108,14 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--debug", action="store_true", help="Enable debug level logging")
     args = parser.parse_args()
 
+    info_format = "%(asctime)s - %(levelname)s - %(message)s"
+    debug_format = "%(asctime)s - %(levelname)s - [%(name)s] - %(message)s"
+
+    log_level = logging.DEBUG if args.debug else logging.INFO
+    log_format = debug_format if args.debug else info_format
+
     logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
+        level=log_level,
+        format=log_format,
     )
     asyncio.run(run_interactive_test(args.host, args.port))

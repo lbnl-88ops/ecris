@@ -44,7 +44,14 @@ class MotorController(TelnetDevice):
 
     async def connect(self, wakeup_required=True) -> None:
         _log.debug(f"Connecting Motor Controller at {self._host}")
-        await super().connect(wakeup_required)
+        try:
+            await super().connect(wakeup_required)
+        except asyncio.TimeoutError:
+            _log.debug(
+                "Connection failed, controller may already be in PROG0 mode, attempting to reconnect..."
+            )
+            self._prompt = "P00>"
+            await super().connect(wakeup_required=True)
         _log.debug("Verifying handshake")
         await self._verify_handshake()
         _log.debug("Running setup")
@@ -83,7 +90,7 @@ class MotorController(TelnetDevice):
                     _log.debug(f"Processing return value {value}")
                     if return_type is bool:
                         match value.lower():
-                            case "1" | "yes" | "true" | "on":
+                            case "-1" | "1" | "yes" | "true" | "on":
                                 return return_type(1)  # Use 1 for True to satisfy TypeVar
                             case "0" | "no" | "off" | "false":
                                 return return_type(0)  # Use 0 for False to satisfy TypeVar
@@ -106,7 +113,7 @@ class MotorController(TelnetDevice):
     async def _verify_handshake(self):
         """Sends commands to verify connection and logs device info."""
         try:
-            firmware_version = await self.send_command(Commands.GET_FIRMWARE_VERSION, str)
+            firmware_version = await self.send_command(Commands.GET_FIRMWARE_VERSION, List[str])
             attachment_list = await self.send_command(Commands.GET_ATTACHMENTS, List[str])
             attachments_str = "\n".join(attachment_list)
             _log.info(f"Connection to {self.id} verified, firmware version {firmware_version}")
@@ -117,7 +124,7 @@ class MotorController(TelnetDevice):
             raise ConnectionError("Handshake not verified, check driver configuration.") from e
 
     async def _setup(self) -> None:
-        self._prompt = "P00> "
+        self._prompt = "P00>"
         await self.send_command(Commands.OPEN_PROGRAM0)
         await self.send_command(Commands.SET_RAMPING)
 
@@ -127,7 +134,7 @@ class MotorController(TelnetDevice):
             while is_moving:
                 is_moving = await self.send_command(Commands.CHECK_IN_MOTION(), bool)
                 # Prevent busy-wait condition (constantly pinging the controller)
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(1.0)
         except KeyboardInterrupt:
             if axis is not None:
                 await self.send_command(Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)))
