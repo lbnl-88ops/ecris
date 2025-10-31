@@ -26,10 +26,10 @@ class MotorController(TelnetDevice):
         id: str = "ACR74C",
         ip: str | None = None,
         port: int | None = None,
-        prompt: str = "SYS>",
+        prompt: str = "P00>",
         encoding: str = "ascii",
     ):
-        super().__init__(id, ip, port, prompt, encoding)
+        super().__init__(id, ip, port, prompt, encoding, command_terminator="\r")
         self._move_lock = asyncio.Lock()
         self._centered = {a: False for a in Axis}
 

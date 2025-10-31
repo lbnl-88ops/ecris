@@ -47,14 +47,15 @@ async def _parse_and_execute(controller: MotorController, user_input: str):
     method_name, expected_types = COMMAND_MAP[command_str]
     method = getattr(controller, method_name)
     kwargs = {}
-    if isinstance(expected_types[-1], dict):
-        kwargs = expected_types.pop()
+    if expected_types:
+        if isinstance(expected_types[-1], dict):
+            kwargs = expected_types.pop()
 
-    if len(raw_args) != len(expected_types):
-        raise TypeError(
-            f"Wrong number of arguments for '{command_str}'. "
-            f"Expected {len(expected_types)}, got {len(raw_args)}."
-        )
+        if len(raw_args) != len(expected_types):
+            raise TypeError(
+                f"Wrong number of arguments for '{command_str}'. "
+                f"Expected {len(expected_types)}, got {len(raw_args)}."
+            )
 
     args = []
     for raw_arg, arg_type in zip(raw_args, expected_types):

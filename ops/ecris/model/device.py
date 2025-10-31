@@ -41,6 +41,7 @@ class TelnetDevice(Device):
         port: int | None = None,
         prompt: str | None = None,
         encoding: str = "ascii",
+        command_terminator: str = "\r\n",
     ):
         self.id = id
         self._ip: IPv4Address | IPv6Address | None = None
@@ -50,6 +51,7 @@ class TelnetDevice(Device):
         self._writer: TelnetWriter | None = None
         self._connection_lock = asyncio.Lock()
         self.encoding = encoding
+        self._command_terminator = command_terminator
 
         if ip:
             self.ip = ip
@@ -126,7 +128,7 @@ class TelnetDevice(Device):
     async def _write(self, command: str):
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot write.")
-        encoded_command = (command + "\r\n").encode(self.encoding)
+        encoded_command = (command + self._command_terminator).encode(self.encoding)
         self._writer.write(encoded_command)
         await self._writer.drain()
 
