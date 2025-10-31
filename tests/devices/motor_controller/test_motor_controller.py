@@ -55,6 +55,7 @@ async def test_connect_sends_correct_commands(mock_motor_controller_not_connecte
     motor_controller, fake_controller, mock_open_conn, _ = mock_motor_controller_not_connected
 
     commands = [
+        "",  # Wake up
         Commands.GET_FIRMWARE_VERSION,
         Commands.GET_ATTACHMENTS,
         Commands.OPEN_PROGRAM0,

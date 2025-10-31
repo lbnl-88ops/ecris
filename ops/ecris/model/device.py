@@ -87,7 +87,7 @@ class TelnetDevice(Device):
     def _host(self) -> str:
         return f"{self._ip}:{self._port}"
 
-    async def connect(self, wakeup_required: bool = False) -> None:
+    async def connect(self) -> None:
         async with self._connection_lock:
             host = self._host
             if self.is_connected:
@@ -102,17 +102,24 @@ class TelnetDevice(Device):
                 self._reader, self._writer = await asyncio.wait_for(
                     open_connection(ip_str, self._port, encoding=False), timeout=3.0
                 )
-                if wakeup_required:
-                    _log.debug("Waking up device.")
-                    await self._write("")
-                _log.debug(f"Awaiting initial response, expected prompt = {self._prompt}")
-                response = await asyncio.wait_for(self._read_until(self._prompt), 1.0)
-                _log.info(f"Successfully connected to {host}, response: {response}.")
+                _log.debug("Connected, performing handshake...")
+                await self._handshake()
+                _log.debug("Handshake complete, performing setup...")
+                await self._setup()
+                # _log.debug(f"Awaiting initial response, expected prompt = {self._prompt}")
+                # response = await asyncio.wait_for(self._read_until(self._prompt), 1.0)
+                # _log.info(f"Successfully connected to {host}, response: {response}.")
             except (ConnectionRefusedError, OSError, asyncio.TimeoutError) as e:
                 _log.error(f"Failed to connect to {host}: {e}")
                 self._reader = None
                 self._writer = None
                 raise
+
+    async def _handshake(self) -> None:
+        pass
+
+    async def _setup(self) -> None:
+        pass
 
     async def disconnect(self) -> None:
         if not self.is_connected:

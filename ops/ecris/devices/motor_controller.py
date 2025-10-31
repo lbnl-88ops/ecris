@@ -26,7 +26,7 @@ class MotorController(TelnetDevice):
         id: str = "ACR74C",
         ip: str | None = None,
         port: int | None = None,
-        prompt: str = "P00>",
+        prompt: str = "SYS>",
         encoding: str = "ascii",
     ):
         super().__init__(id, ip, port, prompt, encoding, command_terminator="\r")
@@ -44,18 +44,7 @@ class MotorController(TelnetDevice):
 
     async def connect(self, wakeup_required=True) -> None:
         _log.debug(f"Connecting Motor Controller at {self._host}")
-        try:
-            await super().connect(wakeup_required)
-        except asyncio.TimeoutError:
-            _log.debug(
-                "Connection failed, controller may already be in PROG0 mode, attempting to reconnect..."
-            )
-            self._prompt = "P00>"
-            await super().connect(wakeup_required=True)
-        _log.debug("Verifying handshake")
-        await self._verify_handshake()
-        _log.debug("Running setup")
-        await self._setup()
+        await super().connect()
 
     @overload
     async def send_command(self, command: str, return_type: Type[_T]) -> _T: ...
@@ -110,8 +99,14 @@ class MotorController(TelnetDevice):
 
         return None  # No return_type was specified
 
-    async def _verify_handshake(self):
+    async def _handshake(self):
         """Sends commands to verify connection and logs device info."""
+        try:
+            await asyncio.wait_for(self.send_command(""), timeout=3.0)
+        except TimeoutError:
+            _log.debug("Wakeup timed out, controller may already be in program mode, reattempting")
+            self._prompt = "P00>"
+            await asyncio.wait_for(self.send_command(""), timeout=3.0)
         try:
             firmware_version = await self.send_command(Commands.GET_FIRMWARE_VERSION, List[str])
             attachment_list = await self.send_command(Commands.GET_ATTACHMENTS, List[str])
