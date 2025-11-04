@@ -32,6 +32,18 @@ class Device(ABC):
         """
         pass
 
+    @property
+    def is_connected(self) -> bool:
+        raise NotImplementedError()
+
+    @abstractmethod
+    async def connect(self) -> None:
+        pass
+
+    @abstractmethod
+    async def disconnect(self) -> None:
+        pass
+
 
 class TelnetDevice(Device):
     def __init__(

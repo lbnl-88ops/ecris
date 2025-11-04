@@ -5,7 +5,6 @@ from enum import Enum, auto
 import random
 
 from ops.ecris.model.device_data import DeviceData
-from ops.ecris.model.device import Device
 _log = getLogger(__name__)
 
 try:
@@ -168,7 +167,7 @@ GAS_NAMES = {
     10: 'Kr', 11: '4 He', 12: '3 He', 13: 'N', 14: '21 Ne', 15: 'Ne'
 }
 
-class VenusPLC(Device):
+class VenusPLC:
     class DataKeys(Enum):
         AVERAGE_CURRENT = auto()
         CURRENT_STDEV = auto()
