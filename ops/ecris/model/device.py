@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from enum import StrEnum
+from enum import Enum, auto
 import asyncio
 from logging import getLogger
 from typing import Dict, List, Type, Any
@@ -8,6 +8,10 @@ from telnetlib3 import open_connection, TelnetReader, TelnetWriter
 
 _log = getLogger(__name__)
 
+class ConnectionMode(Enum):
+    READ_ONLY = auto()
+    WRITE_ONLY = auto()
+    READ_WRITE = auto()
 
 class Device(ABC):
     """
