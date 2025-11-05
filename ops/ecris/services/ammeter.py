@@ -2,6 +2,7 @@ import asyncio
 from logging import getLogger
 import time
 from ops.ecris.devices import Ammeter
+from ops.ecris.drivers.device import TelnetDevice
 from ops.ecris.drivers.measurement import ValueMeasurement
 from .base_acquisition import TelnetDataAcquisitionService
 from .distributor import DataDistributor
@@ -11,10 +12,13 @@ _log = getLogger(__name__)
 
 class CurrentAcquisitionService(TelnetDataAcquisitionService):
     def __init__(self, ammeter: Ammeter):
-        super().__init__(ammeter)
+        if not isinstance(ammeter._connection, TelnetDevice):
+            raise ValueError('Ammeter must use telnet device connection')
+        super().__init__(ammeter._connection)
         # Distributer for current data
         self._distributor = DataDistributor(self._data_queue)
         self._distributor_task: asyncio.Task | None = None
+        self._ammeter = ammeter
 
     async def start(self) -> None:
         await super().start()
@@ -32,7 +36,7 @@ class CurrentAcquisitionService(TelnetDataAcquisitionService):
         await super().stop()
 
     def _acquire_data(self) -> ValueMeasurement:
-        coroutine = self.device.read_data(Ammeter.DataKeys.CURRENT)
+        coroutine = self._ammeter.read_current()
         future = asyncio.run_coroutine_threadsafe(coroutine, self._loop)
         data = future.result()
         return ValueMeasurement(
