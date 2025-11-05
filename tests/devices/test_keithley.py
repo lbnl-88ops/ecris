@@ -1,12 +1,12 @@
-# test_ammeter_pytest.py
+# test_keysight_pytest.py
 
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock, call
 
-from ops.ecris.devices.ammeter import Ammeter
+from ops.ecris.drivers.keithley import Keysight
 
 @pytest.fixture
-def mock_ammeter_connection():
+def mock_keysight_connection():
     with patch('ops.ecris.drivers.device.open_connection') as mock_open_conn:
         mock_reader = AsyncMock()
         mock_writer = AsyncMock()
@@ -14,13 +14,13 @@ def mock_ammeter_connection():
         mock_writer.is_closing = MagicMock(return_value=False)
         mock_open_conn.return_value = (mock_reader, mock_writer)
         
-        ammeter = Ammeter(read_frequency_per_min=60, ip='127.0.0.1', port=9999)
+        keysight = Keysight(read_frequency_per_min=60, ip='127.0.0.1', port=9999)
         
-        yield ammeter, mock_reader, mock_writer, mock_open_conn
+        yield keysight, mock_reader, mock_writer, mock_open_conn
 
 @pytest.mark.asyncio
-async def test_connect_sends_correct_commands(mock_ammeter_connection):
-    ammeter, mock_reader, mock_writer, mock_open_conn = mock_ammeter_connection
+async def test_connect_sends_correct_commands(mock_keysight_connection):
+    keysight, mock_reader, mock_writer, mock_open_conn = mock_keysight_connection
     expected_nplc = 1.0
     setup_commands = [
         "*rst",
@@ -36,7 +36,7 @@ async def test_connect_sends_correct_commands(mock_ammeter_connection):
     mock_reader.readuntil.side_effect = read_until_effects
 
     with patch('asyncio.sleep') as mock_sleep:
-        await ammeter.connect()
+        await keysight.connect()
         mock_sleep.assert_awaited_once_with(2.0)
     
     mock_open_conn.assert_awaited_once_with('127.0.0.1', 9999, encoding=False)
@@ -51,15 +51,15 @@ async def test_connect_sends_correct_commands(mock_ammeter_connection):
     assert mock_reader.readuntil.call_count == len(read_until_effects)
 
 @pytest.mark.asyncio
-async def test_read_data_sends_command_and_parses_response(mock_ammeter_connection):
-    ammeter, mock_reader, mock_writer, _ = mock_ammeter_connection
-    ammeter._reader = mock_reader
-    ammeter._writer = mock_writer
+async def test_read_data_sends_command_and_parses_response(mock_keysight_connection):
+    keysight, mock_reader, mock_writer, _ = mock_keysight_connection
+    keysight._reader = mock_reader
+    keysight._writer = mock_writer
     command = "meas:curr?"
 
     mock_reader.readuntil.return_value = 'meas:curr?\r\n  1.2345E-05\r\nB2900A> '.encode('ascii')
 
-    data = await ammeter.read_data(Ammeter.DataKeys.CURRENT)
+    data = await keysight.read_data(Keysight.DataKeys.CURRENT)
 
     
     mock_writer.write.assert_called_once_with(f'{command}\r\n'.encode('ascii'))
