@@ -8,11 +8,6 @@ from telnetlib3 import open_connection, TelnetReader, TelnetWriter
 
 _log = getLogger(__name__)
 
-class ConnectionMode(Enum):
-    READ_ONLY = auto()
-    WRITE_ONLY = auto()
-    READ_WRITE = auto()
-
 class Device(ABC):
     """
     An abstract base class for a controllable device.
