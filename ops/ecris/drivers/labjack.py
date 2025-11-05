@@ -11,29 +11,14 @@ from ops.ecris.drivers.device_data import DeviceData
 
 _log = getLogger(__name__)
 
-LABJACK_DATA_DEFINITIONS = DeviceData(
-    {
-        # TODO: Ask Damon about these definitions
-        "Beam line": [
-            ("Batman electromagnet current", "A", "DAC0"),
-            ("Batman electromagnet voltage", "V", "DAC1"),
-            ("Batman electromagnet field", "G", "AIN0"),
-        ]
-    }
-)
-
 
 class LabJack(Device):
     class DataKeys(Enum):
-        BATMAN_CURRENT = auto()
-        BATMAN_VOLTAGE = auto()
-        BATMAN_FIELD = auto()
+        DAC0 = auto()
+        DAC1 = auto()
+        AIN0 = auto()
 
-    _KEYS: Dict[DataKeys, str] = {
-        DataKeys.BATMAN_CURRENT: "DAC0",
-        DataKeys.BATMAN_VOLTAGE: "DAC1",
-        DataKeys.BATMAN_FIELD: "AIN0",
-    }
+    _KEYS: Dict[DataKeys, str] = {k: str(k.name) for k in DataKeys}
 
     def __init__(self) -> None:
         self._connection_lock = asyncio.Lock()
