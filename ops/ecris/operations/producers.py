@@ -3,7 +3,7 @@ import time
 from typing import Dict
 
 from ops.ecris.devices import Ammeter
-from ops.ecris.model.measurement import AverageMeasurement
+from ops.ecris.drivers.measurement import AverageMeasurement
 
 import numpy as np
 

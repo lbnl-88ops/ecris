@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 from enum import Enum, auto
 import random
 
-from ops.ecris.model.device_data import DeviceData
+from ops.ecris.drivers.device_data import DeviceData
 _log = getLogger(__name__)
 
 try:

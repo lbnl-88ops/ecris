@@ -2,9 +2,9 @@ import pytest
 from pytest import approx
 from unittest.mock import patch
 
-from ops.ecris.model.labjack import LabJack
+from ops.ecris.drivers.labjack import LabJack
 
-MODULE = "ops.ecris.model.labjack."
+MODULE = "ops.ecris.drivers.labjack."
 
 
 @pytest.fixture

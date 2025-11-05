@@ -1,7 +1,7 @@
 from logging import getLogger
 from typing import Any
 
-from ops.ecris.model.device import Device
+from ops.ecris.drivers.device import Device
 
 _log = getLogger(__name__)
 

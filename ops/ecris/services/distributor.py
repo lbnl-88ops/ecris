@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from typing import List
-from ops.ecris.model.measurement import Measurement
+from ops.ecris.drivers.measurement import Measurement
 
 _log = logging.getLogger(__name__)
 

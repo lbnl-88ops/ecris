@@ -2,7 +2,7 @@ import asyncio
 import time
 import statistics
 import logging
-from ops.ecris.model.measurement import ValueMeasurement, AverageMeasurement
+from ops.ecris.drivers.measurement import ValueMeasurement, AverageMeasurement
 
 _log = logging.getLogger(__name__)
 

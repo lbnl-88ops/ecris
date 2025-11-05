@@ -3,7 +3,7 @@ from logging import getLogger
 from typing import Set, List
 from enum import Enum, auto, StrEnum
 
-from ops.ecris.model.device import TelnetDevice, Device
+from ops.ecris.drivers.device import TelnetDevice, Device
 
 _log = getLogger(__name__)
 

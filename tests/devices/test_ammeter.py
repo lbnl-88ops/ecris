@@ -7,7 +7,7 @@ from ops.ecris.devices.ammeter import Ammeter
 
 @pytest.fixture
 def mock_ammeter_connection():
-    with patch('ops.ecris.model.device.open_connection') as mock_open_conn:
+    with patch('ops.ecris.drivers.device.open_connection') as mock_open_conn:
         mock_reader = AsyncMock()
         mock_writer = AsyncMock()
         mock_writer.write = MagicMock()

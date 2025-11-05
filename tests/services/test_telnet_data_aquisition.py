@@ -5,7 +5,7 @@ import threading
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from ops.ecris.model.measurement import Measurement
+from ops.ecris.drivers.measurement import Measurement
 from ops.ecris.services.base_acquisition import TelnetDataAcquisitionService
 
 MODULE = 'ops.ecris.services.base_acquisition.'

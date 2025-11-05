@@ -6,7 +6,7 @@ import pytest
 from pytest import approx
 import time
 
-from ops.ecris.model.measurement import AverageMeasurement
+from ops.ecris.drivers.measurement import AverageMeasurement
 from ops.ecris.operations.producers import time_average_current
 from ops.ecris.tasks.device_broadcasters import update_plc_average_current
 from ops.ecris.devices import Ammeter, VenusPLC

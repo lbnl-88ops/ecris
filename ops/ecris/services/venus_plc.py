@@ -4,7 +4,7 @@ import time
 from ops.ecris.data.producer_thread import producer_thread
 from .base_acquisition import BaseAquisitionService
 from ops.ecris.devices.venus_plc import VenusPLC
-from ops.ecris.model.measurement import MultiValueMeasurement
+from ops.ecris.drivers.measurement import MultiValueMeasurement
 import threading
 
 _log = getLogger(__name__)

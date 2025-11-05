@@ -5,7 +5,7 @@ from typing import Any, List, Type, TypeVar, overload, Literal, get_origin, get_
 import asyncio
 
 from ops.ecris.utilities.decorators import with_lock_named
-from ops.ecris.model.device import TelnetDevice
+from ops.ecris.drivers.device import TelnetDevice
 from .motor_controller_specification import (
     MID_POINT_OFFSETS,
     Commands,

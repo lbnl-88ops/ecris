@@ -2,7 +2,7 @@ import asyncio
 from logging import getLogger
 import time
 from ops.ecris.devices import Ammeter
-from ops.ecris.model.measurement import ValueMeasurement
+from ops.ecris.drivers.measurement import ValueMeasurement
 from .base_acquisition import TelnetDataAcquisitionService
 from .distributor import DataDistributor
 from .processors import AveragingProcessor

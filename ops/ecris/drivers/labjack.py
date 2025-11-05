@@ -5,9 +5,9 @@ from typing import Any, Dict
 
 from labjack import ljm
 
-from ops.ecris.model.device import Device
+from ops.ecris.drivers.device import Device
 from ops.ecris.utilities.decorators import with_lock_named
-from ops.ecris.model.device_data import DeviceData
+from ops.ecris.drivers.device_data import DeviceData
 
 _log = getLogger(__name__)
 
