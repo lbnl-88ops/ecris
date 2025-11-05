@@ -6,10 +6,12 @@ import pytest
 from pytest import approx
 import time
 
+from ops.ecris.drivers import keithley
 from ops.ecris.drivers.measurement import AverageMeasurement
 from ops.ecris.operations.producers import time_average_current
 from ops.ecris.tasks.device_broadcasters import update_plc_average_current
 from ops.ecris.devices import Ammeter, VenusPLC
+from ops.ecris.drivers.keithley import Keysight
 from .ammeter_legacy_functions import legacy_current_measurement
 
 LEGACY_MODULE = 'tests.legacy_code.ammeter_legacy_functions.'
@@ -48,15 +50,16 @@ class TestAverage:
 
     @pytest.mark.asyncio
     async def test_time_average_current(self):
-        mock_ammeter = AsyncMock()
+        mock_keithley = AsyncMock()
+        ammeter = Ammeter(mock_keithley, Keysight.DataKeys.CURRENT)
         loop = asyncio.get_running_loop()
-        mock_ammeter.read_data.side_effect = self.CURRENT_READINGS
+        mock_keithley.read_data.side_effect = self.CURRENT_READINGS
         
         with patch(MODULE + 'time') as mock_time:
             mock_time.time.side_effect = self.TIMESTAMPS
-            measurement = await asyncio.to_thread(time_average_current, loop, mock_ammeter, 0.33)
-        expected_calls = [call(Ammeter.DataKeys.CURRENT) for _ in self.CURRENT_READINGS]
-        assert mock_ammeter.read_data.await_args_list == expected_calls
+            measurement = await asyncio.to_thread(time_average_current, loop, ammeter, 0.33)
+        expected_calls = [call(Keysight.DataKeys.CURRENT) for _ in self.CURRENT_READINGS]
+        assert mock_keithley.read_data.await_args_list == expected_calls
         assert measurement.average == self.EXPECTED_AVERAGE
         assert measurement.standard_deviation == self.EXPECTED_REL_STDEV
 
