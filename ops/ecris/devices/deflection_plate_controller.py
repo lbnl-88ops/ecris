@@ -18,7 +18,7 @@ CAPACITOR_LENGTH_IN_M = 0.1199896  # 4.724"
 
 class DeflectionPlateController:
     """
-    A controller for the capacitor used a deflection plate in the emittance scanner.
+    A controller for the capacitor used as a deflection plate in the emittance scanner.
     The main purpose of the class is to take the extraction voltage and the desired
     momentum and convert that into a voltage for the plates.
     """
@@ -30,8 +30,14 @@ class DeflectionPlateController:
         self._deflection_voltage_source = deflection_voltage_source
 
     async def connect(self) -> None:
+        """Connects the underlying voltmeter and voltage source."""
         await self._extraction_voltmeter.connect()
         await self._deflection_voltage_source.connect()
+
+    async def disconnect(self) -> None:
+        """Disconnects the underlying voltmeter and voltage source."""
+        await self._extraction_voltmeter.disconnect()
+        await self._deflection_voltage_source.disconnect()
 
     async def _calculate_voltage(self, momentum: float) -> float:
         """Calculates the deflector voltage based on a target momentum.
@@ -47,6 +53,12 @@ class DeflectionPlateController:
         v_extr = await self._extraction_voltmeter.read_voltage()
         return 2 * momentum * CAPACITOR_PLATE_DISTANCE_IN_M * v_extr / CAPACITOR_LENGTH_IN_M
 
-    async def set_voltage(self, momentum: float) -> None:
-        voltage_to_set = await self._calculate_voltage(momentum * 1e-3)
+    async def set_momentum(self, momentum: float) -> None:
+        """
+        Sets the deflection plates to a state corresponding to the desired momentum.
+
+        :param momentum: The desired particle momentum in radians (rad).
+        :type momentum: float
+        """
+        voltage_to_set = await self._calculate_voltage(momentum)
         await self._deflection_voltage_source.set_voltage(voltage_to_set)
