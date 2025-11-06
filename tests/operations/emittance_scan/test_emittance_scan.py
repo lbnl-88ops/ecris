@@ -1,5 +1,3 @@
-# In: tests/operations/emittance_sca/test_emittance_scan.py
-
 import pytest
 import numpy as np
 from unittest.mock import AsyncMock, call, MagicMock
@@ -41,7 +39,7 @@ class TestEmittanceScan:
             divergence_min=-10,
             divergence_max=2,
             divergence_step=2.0,
-            samples_per_point=2000,
+            samples_per_point=10,
         )
 
         expected_positions = [-1.0, 0.0, 1.0, 2.0]
