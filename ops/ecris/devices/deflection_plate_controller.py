@@ -1,3 +1,5 @@
+from typing import Callable
+
 from .power_supply import VoltageSource, Voltmeter
 
 CAPACITOR_PLATE_DISTANCE_IN_M = 0.0189992  # 0.748"
@@ -14,6 +16,10 @@ CAPACITOR_LENGTH_IN_M = 0.1199896  # 4.724"
 #                                  |
 #  - - - - - - - - - - - - - - -  --
 #  - - - - - - - - - - - - - - -
+
+
+def LABJACK_DEFLECTION_PLATE_BIAS(unbiased_voltage: float) -> float:
+    return unbiased_voltage / 100 + 3.188
 
 
 class DeflectionPlateController:

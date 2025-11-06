@@ -33,8 +33,8 @@ async def test_voltage_calculation(mock_voltmeter, mock_voltage_source):
 async def test_voltage_set(mock_voltmeter, mock_voltage_source):
     mock_voltmeter.read_voltage.return_value = 120
     momentum = 20  # rad
-    expected_voltage = 760.033869602 * 1e-3
+    expected_voltage = 760.033869602
 
     test_controller = DeflectionPlateController(mock_voltmeter, mock_voltage_source)
-    await test_controller.set_voltage(momentum)
+    await test_controller.set_momentum(momentum)
     mock_voltage_source.set_voltage.assert_awaited_once_with(approx(expected_voltage))
