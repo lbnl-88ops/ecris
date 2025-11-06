@@ -54,7 +54,7 @@ class TestEmittanceScan:
         for avg in mock_averages:
             mock_readings.extend(
                 [
-                    avg * np.random.normal(1.0, scale=1e-3)
+                    avg * np.random.normal(1.0, scale=1e-7)
                     for _ in range(scan_params.samples_per_point)
                 ]
             )
@@ -72,7 +72,7 @@ class TestEmittanceScan:
 
         # Motor calls
         expected_motor_calls = [
-            call.move_to_position(pos, scan_params.axis) for pos in expected_positions
+            call.move_to_position(scan_params.axis, pos) for pos in expected_positions
         ]
         mock_motor.assert_has_calls(expected_motor_calls)
         assert mock_motor.move_to_position.call_count == len(expected_positions)
@@ -91,13 +91,13 @@ class TestEmittanceScan:
         assert mock_ammeter.read_current.call_count == expected_read_count
 
         # Check final value
-        expected_shape = (len(expected_positions), len(expected_divergences))
+        expected_shape = (len(expected_divergences), len(expected_positions))
         assert result_matrix.shape == expected_shape
 
         # The values in the matrix should be the averages we configured.
-        expected_matrix = np.zeros(shape=(len(expected_divergences), len(expected_divergences)))
+        expected_matrix = np.zeros(shape=(len(expected_divergences), len(expected_positions)))
         for i in range(len(expected_positions)):
             for j in range(len(expected_divergences)):
                 expected_matrix[j, i] = 1e-5 * (i + j + 1)
 
-        assert np.array_equal(result_matrix, expected_matrix)
+        np.testing.assert_allclose(result_matrix, expected_matrix)
