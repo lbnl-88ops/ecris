@@ -1,4 +1,5 @@
 import asyncio
+import time
 from abc import ABC
 from logging import getLogger
 import numpy as np
@@ -44,21 +45,68 @@ class LinearEmittanceScan(ABC):
         )
 
     async def run(self) -> np.ndarray:
-        positions = self.position_array
-        divergences = self.divergence_array
+        """
+        Executes the emittance scan, collecting data and returning it as a 2D numpy array.
+        """
+        async with self._scan_lock:
+            start_time = time.monotonic()
+            positions = self.position_array
+            divergences = self.divergence_array
 
-        m = len(divergences)
-        n = len(positions)
-        beam_trace = np.zeros((m, n))
+            n_positions = len(positions)
+            n_divergences = len(divergences)
+            beam_trace = np.zeros((n_divergences, n_positions))
 
-        for i, position in enumerate(positions):
-            await self._motor.move_to_position(self.params.axis, position)
-            position_trace = np.zeros((m,))
-            for j, divergence in enumerate(divergences):
-                await self._deflection_plate_controller.set_divergence(divergence)
-                total_current = []
-                for _ in range(self.params.samples_per_point):
-                    total_current.append(await self._ammeter.read_current())
-                position_trace[j] = np.mean(total_current)
-            beam_trace[:, i] = position_trace
-        return beam_trace
+            _log.info(
+                f"Starting emittance scan for axis {self.params.axis.name}: "
+                f"{n_positions} positions x {n_divergences} divergences "
+                f"({n_positions * n_divergences} total points)."
+            )
+            _log.info(f"Sampling {self.params.samples_per_point} points per measurement.")
+
+            try:
+                _log.info("Connecting devices...")
+                await asyncio.gather(
+                    self._motor.connect(),
+                    self._ammeter.connect(),
+                    self._deflection_plate_controller.connect(),
+                )
+                _log.info("All devices connected.")
+
+                for i, position in enumerate(positions):
+                    _log.info(f"Processing position {i + 1}/{n_positions}: {position:.3f} mm")
+                    _log.debug(
+                        f"Moving to position {position:.3f} on axis {self.params.axis.name}"
+                    )
+                    await self._motor.move_to_position(self.params.axis, position)
+
+                    position_trace = np.zeros((n_divergences,))
+                    for j, divergence in enumerate(divergences):
+                        _log.debug(f"  Setting divergence to {divergence:.4f} rad")
+                        await self._deflection_plate_controller.set_divergence(divergence)
+
+                        total_current = []
+                        for _ in range(self.params.samples_per_point):
+                            current_reading = await self._ammeter.read_current()
+                            total_current.append(current_reading)
+                        mean_current = np.mean(total_current)
+                        position_trace[j] = mean_current
+                        _log.debug(
+                            f"  -> Collected {self.params.samples_per_point} samples. "
+                            f"Averaged current: {mean_current:.4e} A"
+                        )
+                    beam_trace[:, i] = position_trace
+
+                duration = time.monotonic() - start_time
+                _log.info(f"Emittance scan finished successfully in {duration:.2f} seconds.")
+                return beam_trace
+
+            finally:
+                # --- Ensure devices are always disconnected, even if an error occurs ---
+                _log.info("Disconnecting all devices...")
+                await asyncio.gather(
+                    self._motor.disconnect(),
+                    self._ammeter.disconnect(),
+                    self._deflection_plate_controller.disconnect(),
+                )
+                _log.info("All devices disconnected.")
