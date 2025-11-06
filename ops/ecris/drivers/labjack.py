@@ -5,14 +5,14 @@ from typing import Any, Dict
 
 from labjack import ljm
 
-from ops.ecris.drivers.device import Device
+from .base import SessionDriver
 from ops.ecris.utilities.decorators import with_lock_named
 from ops.ecris.drivers.device_data import DeviceData
 
 _log = getLogger(__name__)
 
 
-class LabJack(Device):
+class LabJack(SessionDriver):
     class DataKeys(Enum):
         DAC0 = auto()
         DAC1 = auto()

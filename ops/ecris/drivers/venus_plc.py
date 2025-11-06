@@ -5,33 +5,41 @@ from enum import Enum, auto
 import random
 
 from ops.ecris.drivers.device_data import DeviceData
+from ops.ecris.drivers import DataSource
+
 _log = getLogger(__name__)
 
 try:
     from venus_data_utils.venusplc import VENUSController
 except ModuleNotFoundError:
     _log.warning(
-    "Could not import VENUSController from venus_data_utils. "
-    "Falling back to dummy implementation for development/testing.")
+        "Could not import VENUSController from venus_data_utils. "
+        "Falling back to dummy implementation for development/testing."
+    )
 
     class VENUSController:
         """Dummy class for future import"""
+
         def __init__(self, read_only: bool):
             pass
+
         def write(self, data: Dict[str, float]) -> None:
-            _log.debug(f'Wrote to VENUS Controller: {data}')
+            _log.debug(f"Wrote to VENUS Controller: {data}")
+
         def read(self, data: List[str]) -> float:
             match data[0]:
-                case 'test_float_1':
-                    return 1*random.random()
-                case 'test_float_2':
-                    return 2*random.random()
-                case 'test_bool':
+                case "test_float_1":
+                    return 1 * random.random()
+                case "test_float_2":
+                    return 2 * random.random()
+                case "test_bool":
                     return random.randint(0, 1)
-            raise NotImplementedError('VENUSController is not an implemented class')
+            raise NotImplementedError("VENUSController is not an implemented class")
+
         def read_vars(self) -> List[str]:
-            return ['test_float_1', 'test_bool', 'test_float_2']
-            raise NotImplementedError('VENUSController is not an implemented class')
+            return ["test_float_1", "test_bool", "test_float_2"]
+            raise NotImplementedError("VENUSController is not an implemented class")
+
 
 VENUS_PLC_DATA_DEFINITIONS = DeviceData(
     {
@@ -162,12 +170,26 @@ VENUS_PLC_DATA_DEFINITIONS = DeviceData(
 )
 
 GAS_NAMES = {
-    0: 'Cocktail O', 1: '16 O', 2: '17 O', 3: '40 Ar', 4: '36 Ar',
-    5: '136 Xe', 6: '124 Xe', 7: 'Xe', 8: '78 Kr', 9: '86 Kr', 
-    10: 'Kr', 11: '4 He', 12: '3 He', 13: 'N', 14: '21 Ne', 15: 'Ne'
+    0: "Cocktail O",
+    1: "16 O",
+    2: "17 O",
+    3: "40 Ar",
+    4: "36 Ar",
+    5: "136 Xe",
+    6: "124 Xe",
+    7: "Xe",
+    8: "78 Kr",
+    9: "86 Kr",
+    10: "Kr",
+    11: "4 He",
+    12: "3 He",
+    13: "N",
+    14: "21 Ne",
+    15: "Ne",
 }
 
-class VenusPLC:
+
+class VenusPLC(DataSource):
     class DataKeys(Enum):
         AVERAGE_CURRENT = auto()
         CURRENT_STDEV = auto()
@@ -175,23 +197,25 @@ class VenusPLC:
         EXTRACTION_VOLTAGE = auto()
 
     _PLC_KEYS: Dict[DataKeys, str] = {
-        DataKeys.AVERAGE_CURRENT: 'fcv1_ammeter',
-        DataKeys.CURRENT_STDEV: 'fcv1_ammeter_stdev',
-        DataKeys.BATMAN_CURRENT: 'batman_i',
-        DataKeys.EXTRACTION_VOLTAGE: 'extraction_v'
+        DataKeys.AVERAGE_CURRENT: "fcv1_ammeter",
+        DataKeys.CURRENT_STDEV: "fcv1_ammeter_stdev",
+        DataKeys.BATMAN_CURRENT: "batman_i",
+        DataKeys.EXTRACTION_VOLTAGE: "extraction_v",
     }
 
     def __init__(self, venus_controller: VENUSController):
         self._sync_venus = venus_controller
         self._lock = asyncio.Lock()
-    
+
     async def get_all_data(self) -> Dict[int, Tuple[str, float]]:
         async with self._lock:
             data_values: Dict[int, Tuple[str, float]] = {}
             all_data_keys = await asyncio.to_thread(self._sync_venus.read_vars)
             for idx, data_key in enumerate(all_data_keys):
-                data_values[idx] = data_key, await asyncio.to_thread(
-                    self._sync_venus.read, [data_key])
+                data_values[idx] = (
+                    data_key,
+                    await asyncio.to_thread(self._sync_venus.read, [data_key]),
+                )
             return data_values
 
     async def write_data(self, data_key: DataKeys, value: float) -> None:
@@ -199,7 +223,7 @@ class VenusPLC:
             try:
                 key = self._PLC_KEYS[data_key]
             except KeyError:
-                raise KeyError(f'Write operation for data_key {data_key.name} not implemented.')
+                raise KeyError(f"Write operation for data_key {data_key.name} not implemented.")
             await asyncio.to_thread(self._sync_venus.write, {key: value})
         return
 
@@ -208,7 +232,6 @@ class VenusPLC:
             try:
                 key = self._PLC_KEYS[data_key]
             except KeyError:
-                raise KeyError(f'Read operation for data_key {data_key.name} not implemented.')
+                raise KeyError(f"Read operation for data_key {data_key.name} not implemented.")
             value = await asyncio.to_thread(self._sync_venus.read, [key])
             return value
-        

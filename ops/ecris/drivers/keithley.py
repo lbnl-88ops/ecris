@@ -3,12 +3,12 @@ from logging import getLogger
 from typing import Set, List
 from enum import Enum, auto, StrEnum
 
-from ops.ecris.drivers.device import TelnetDevice
+from .telnet_driver import TelnetDriver
 
 _log = getLogger(__name__)
 
 
-class Keysight(TelnetDevice):
+class Keysight(TelnetDriver):
     class DataKeys(Enum):
         """Defines the valid data keys for the Keysight."""
 
@@ -113,4 +113,3 @@ class Keysight(TelnetDevice):
         _log.debug(f"Resetting Keysight at {self._host}...")
         await self.send_command(Keysight.Commands.RESET)
         _log.debug("Keysight reset.")
-

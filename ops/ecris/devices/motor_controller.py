@@ -5,7 +5,7 @@ from typing import Any, List, Type, TypeVar, overload, Literal, get_origin, get_
 import asyncio
 
 from ops.ecris.utilities.decorators import with_lock_named
-from ops.ecris.drivers.device import TelnetDevice
+from ops.ecris.drivers.telnet_driver import TelnetDriver
 from .motor_controller_specification import (
     MID_POINT_OFFSETS,
     Commands,
@@ -20,7 +20,7 @@ _log = getLogger(__name__)
 _T = TypeVar("_T")
 
 
-class MotorController(TelnetDevice):
+class MotorController(TelnetDriver):
     def __init__(
         self,
         id: str = "ACR74C",

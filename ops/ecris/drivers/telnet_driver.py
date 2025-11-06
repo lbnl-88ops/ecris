@@ -1,50 +1,14 @@
-from abc import ABC, abstractmethod
-from enum import Enum, auto
 import asyncio
 from logging import getLogger
-from typing import Dict, List, Type, Any
 from ipaddress import IPv6Address, ip_address, IPv4Address
 from telnetlib3 import open_connection, TelnetReader, TelnetWriter
 
+from .base import SessionDriver
+
 _log = getLogger(__name__)
 
-class Device(ABC):
-    """
-    An abstract base class for a controllable device.
-    """
 
-    @abstractmethod
-    async def read_data(self, data_key: Any) -> float:
-        """
-        Fetches a single data point from the device.
-        Raises:
-            KeyError: If the data_key is not supported for reading.
-        """
-        pass
-
-    @abstractmethod
-    async def write_data(self, data_key: Any, value: float) -> None:
-        """
-        Writes a single data value to the device.
-        Raises:
-            KeyError: If the data_key is not supported for writing.
-        """
-        pass
-
-    @property
-    def is_connected(self) -> bool:
-        raise NotImplementedError()
-
-    @abstractmethod
-    async def connect(self) -> None:
-        pass
-
-    @abstractmethod
-    async def disconnect(self) -> None:
-        pass
-
-
-class TelnetDevice(Device):
+class TelnetDriver(SessionDriver):
     def __init__(
         self,
         id: str = "TelnetDevice",

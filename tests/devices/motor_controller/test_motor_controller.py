@@ -17,7 +17,7 @@ from .helpers import FakeMotorController
 
 ALL_AXES = [Axis.VenusX, Axis.VenusY, Axis.AcerX, Axis.AcerY]
 
-DEVICE_MODULE = "ops.ecris.drivers.device."
+DEVICE_MODULE = "ops.ecris.drivers.telnet_driver."
 MODULE = "ops.ecris.devices.motor_controller."
 
 
