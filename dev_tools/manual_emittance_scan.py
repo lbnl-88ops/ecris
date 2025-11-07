@@ -67,6 +67,7 @@ async def main(args):
         divergence_min=-20,
         divergence_max=20,
         divergence_step=1.0,
+        samples_per_point=2,
     )
 
     # Emittance scan
@@ -77,9 +78,62 @@ async def main(args):
         scan_params=scan_parameters,
     )
 
+    await scan_operation.run()
+
+    _log.info("--- Scan Configuration Summary ---")
+    _log.info(f"               Axis: {scan_parameters.axis.name}")
+    _log.info(
+        f"     Position Range: {scan_parameters.position_min} to {scan_parameters.position_max} (step: {scan_parameters.position_step})"
+    )
+    _log.info(
+        f"   Divergence Range: {scan_parameters.divergence_min} to {scan_parameters.divergence_max} (step: {scan_parameters.divergence_step})"
+    )
+    _log.info(f"Samples per point: {scan_parameters.samples_per_point}")
+    print("-" * 40)
+
+    while True:
+        response = await asyncio.to_thread(input, "Proceed with the scan? (y/n): ")
+        if response.lower().strip() == "y":
+            break
+        elif response.lower().strip() == "n":
+            _log.warning("Scan cancelled by user.")
+            return
+        else:
+            print("Invalid input. Please enter 'y' or 'n'.")
+
+    _log.info("User confirmed. Starting scan...")
+    try:
+        results = await scan_operation.run()
+        _log.info("Scan completed successfully.")
+
+        if args.output:
+            _log.info(f"Saving results matrix to {args.output}")
+            np.savetxt(args.output, results, delimiter=",", fmt="%.6e")
+            _log.info("Save complete.")
+        else:
+            _log.info("Scan results (shape {}):".format(results.shape))
+            print(results)
+
+    except Exception as e:
+        _log.error(f"An error occurred during the scan: {e}", exc_info=True)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run a manual emittance scan.")
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        default=None,
+        help="Optional path to save the resulting data matrix as a CSV file.",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose DEBUG level logging.",
+    )
+
     args = parser.parse_args()
     if args.verbose:
         _log.setLevel(logging.DEBUG)
