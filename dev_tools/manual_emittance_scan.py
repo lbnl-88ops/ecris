@@ -64,10 +64,10 @@ async def main(args):
         position_min=-10,
         position_max=10,
         position_step=1.0,
-        divergence_min=-20,
-        divergence_max=20,
+        divergence_min=-50,
+        divergence_max=50,
         divergence_step=1.0,
-        samples_per_point=2,
+        samples_per_point=2000,
     )
 
     # Emittance scan
