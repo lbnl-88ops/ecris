@@ -3,7 +3,7 @@ from typing import Callable
 from logging import getLogger
 
 from .exceptions import ECRISDataFailure
-from ops.ecris.model.measurement import Measurement
+from ops.ecris.drivers.measurement import Measurement
 
 _log = getLogger(__name__)
 
