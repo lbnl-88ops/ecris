@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ops.ecris"
 description = "Data collection and general tools for various ECRIS projects."
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     {name = "Jessica Rehak", email = "rehak@lbl.gov"}
 ]
@@ -42,4 +42,36 @@ addopts = [
     "--cov=ops/ecris",
     "--cov-report=term-missing", 
     "--cov-report=xml",          
+]
+
+# Tool settings
+[tool.ruff]
+target-version = "py311"
+line-length = 99
+exclude = [
+    ".git",
+    ".ruff_cache",
+    ".venv",
+    "__pypackages__",
+    "dist",
+    "build",
+]
+src = ["."]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ops.ecris"]
+
+[tool.pyright]
+reportUnusedImports = "none"
+pythonVersion = "3.11"
+exclude = [
+    ".git",
+    ".ruff_cache",
+    ".venv",
+    "__pypackages__",
+    "dist",
+    "build",
 ]

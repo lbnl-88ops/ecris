@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple, Set
 from functools import cached_property
 
+
 @dataclass
 class DataLabel:
     label: str
@@ -12,10 +13,11 @@ class DataLabel:
         labels = [self.label]
 
         if self.units is not None:
-            labels.append(f'({self.units})')
+            labels.append(f"({self.units})")
         if include_tag:
-            labels.append(f'[{self.key}]')
-        return ' '.join(labels)
+            labels.append(f"[{self.key}]")
+        return " ".join(labels)
+
 
 class DeviceData:
     def __init__(self, labels: Dict[str, List[Tuple[str, str | None, str]]]):
@@ -34,10 +36,10 @@ class DeviceData:
     def labels_by_category(self) -> Dict[str, List[DataLabel]]:
         return {
             category: [
-                DataLabel(label=data, units=units, key=key)
-                for data, units, key in key_data_pairs
+                DataLabel(label=data, units=units, key=key) for data, units, key in key_data_pairs
             ]
-            for category, key_data_pairs in self._raw_labels.items()}
+            for category, key_data_pairs in self._raw_labels.items()
+        }
 
     @cached_property
     def labels_by_key(self) -> Dict[str, DataLabel]:
@@ -45,9 +47,11 @@ class DeviceData:
 
     @cached_property
     def category_by_key(self) -> Dict[str, str]:
-        return {label.key: category
+        return {
+            label.key: category
             for category, labels in self.labels_by_category.items()
-            for label in labels}
+            for label in labels
+        }
 
     @cached_property
     def keys_by_category(self) -> Dict[str, Set[str]]:
@@ -61,4 +65,3 @@ class DeviceData:
             return self.category_by_key[key]
         except KeyError:
             raise KeyError(f"The data key '{key}' was not found in any category.")
-

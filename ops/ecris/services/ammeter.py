@@ -2,19 +2,24 @@ import asyncio
 from logging import getLogger
 import time
 from ops.ecris.devices import Ammeter
-from ops.ecris.model.measurement import ValueMeasurement
+from ops.ecris.drivers.telnet_driver import TelnetDriver
+from ops.ecris.drivers.measurement import ValueMeasurement
 from .base_acquisition import TelnetDataAcquisitionService
 from .distributor import DataDistributor
 from .processors import AveragingProcessor
 
 _log = getLogger(__name__)
 
+
 class CurrentAcquisitionService(TelnetDataAcquisitionService):
     def __init__(self, ammeter: Ammeter):
-        super().__init__(ammeter)
+        if not isinstance(ammeter._connection, TelnetDriver):
+            raise ValueError("Ammeter must use telnet device connection")
+        super().__init__(ammeter._connection)
         # Distributer for current data
         self._distributor = DataDistributor(self._data_queue)
         self._distributor_task: asyncio.Task | None = None
+        self._ammeter = ammeter
 
     async def start(self) -> None:
         await super().start()
@@ -22,7 +27,9 @@ class CurrentAcquisitionService(TelnetDataAcquisitionService):
 
     def subscribe(self) -> asyncio.Queue:
         queue = self._distributor.subscribe()
-        _log.debug(f'New subscriber to {self.__class__.__name__}, total subscribers {self._distributor.n_subscribers}')
+        _log.debug(
+            f"New subscriber to {self.__class__.__name__}, total subscribers {self._distributor.n_subscribers}"
+        )
         return queue
 
     async def stop(self):
@@ -32,14 +39,11 @@ class CurrentAcquisitionService(TelnetDataAcquisitionService):
         await super().stop()
 
     def _acquire_data(self) -> ValueMeasurement:
-        coroutine = self.device.read_data(Ammeter.DataKeys.CURRENT)
+        coroutine = self._ammeter.read_current()
         future = asyncio.run_coroutine_threadsafe(coroutine, self._loop)
         data = future.result()
-        return ValueMeasurement(
-            source=self.device.id,
-            timestamp=time.time(),
-            value=data
-        )
+        return ValueMeasurement(source=self.device.id, timestamp=time.time(), value=data)
+
 
 class AverageCurrentService:
     def __init__(self, raw_data_source: CurrentAcquisitionService, average_rate: float = 0.33):
