@@ -45,18 +45,22 @@ class LinearEmittanceScan(ABC):
         )
 
     async def _connect_all_devices(self) -> None:
+        _log.info("Connecting devices...")
         await asyncio.gather(
             self._motor.connect(),
             self._ammeter.connect(),
             self._deflection_plate_controller.connect(),
         )
+        _log.info("All devices connected.")
 
     async def _disconnect_all_devices(self) -> None:
+        _log.info("Disconnecting all devices...")
         await asyncio.gather(
             self._motor.disconnect(),
             self._ammeter.disconnect(),
             self._deflection_plate_controller.disconnect(),
         )
+        _log.info("All devices disconnected.")
 
     async def _scan_divergences(self, divergences: np.ndarray) -> np.ndarray:
         divergence_trace = np.zeros_like(divergences)
@@ -82,11 +86,9 @@ class LinearEmittanceScan(ABC):
         """
         async with self._scan_lock:
             start_time = time.monotonic()
-            positions = self.position_array
-            divergences = self.divergence_array
 
-            n_positions = len(positions)
-            n_divergences = len(divergences)
+            n_positions = len(self.position_array)
+            n_divergences = len(self.divergence_array)
             beam_trace = np.zeros((n_divergences, n_positions))
 
             _log.info(
@@ -97,18 +99,15 @@ class LinearEmittanceScan(ABC):
             _log.info(f"Sampling {self.params.samples_per_point} points per measurement.")
 
             try:
-                _log.info("Connecting devices...")
                 await self._connect_all_devices()
-                _log.info("All devices connected.")
 
-                for i, position in enumerate(positions):
+                for i, position in enumerate(self.position_array):
                     _log.info(f"Processing position {i + 1}/{n_positions}: {position:.3f} mm")
                     _log.debug(
                         f"Moving to position {position:.3f} on axis {self.params.axis.name}"
                     )
                     await self._motor.move_to_position(self.params.axis, position)
-
-                    beam_trace[:, i] = await self._scan_divergences(divergences)
+                    beam_trace[:, i] = await self._scan_divergences(self.divergence_array)
 
                 duration = time.monotonic() - start_time
                 _log.info(f"Emittance scan finished successfully in {duration:.2f} seconds.")
@@ -116,6 +115,4 @@ class LinearEmittanceScan(ABC):
 
             finally:
                 # --- Ensure devices are always disconnected, even if an error occurs ---
-                _log.info("Disconnecting all devices...")
                 await self._disconnect_all_devices()
-                _log.info("All devices disconnected.")
