@@ -2,8 +2,7 @@ import pytest
 import numpy as np
 from unittest.mock import AsyncMock, call, MagicMock
 
-from ops.ecris.operations.emittance_scan.base import LinearEmittanceScan
-from ops.ecris.operations.emittance_scan.parameters import LinearScanParameters
+from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
 from ops.ecris.devices.motor_controller import MotorController
 from ops.ecris.devices.ammeter import Ammeter
 from ops.ecris.devices.motor_controller_specification import Axis

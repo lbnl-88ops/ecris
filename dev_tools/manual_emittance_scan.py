@@ -18,8 +18,7 @@ from ops.ecris.devices.deflection_plate_controller import (
     LABJACK_DEFLECTION_PLATE_BIAS,
 )
 
-from ops.ecris.operations.emittance_scan.base import LinearEmittanceScan
-from ops.ecris.operations.emittance_scan.parameters import LinearScanParameters
+from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
 
 
 # Set up basic logging to see the output from our scan classes

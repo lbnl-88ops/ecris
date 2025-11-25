@@ -26,7 +26,6 @@ class LinearEmittanceScan(ABC):
         self._ammeter = ammeter
         self._deflection_plate_controller = deflection_plate_controller
         self.params = scan_params
-        self._results = []
 
     @property
     def position_array(self) -> np.ndarray:
