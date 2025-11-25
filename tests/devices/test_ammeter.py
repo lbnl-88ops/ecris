@@ -2,7 +2,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from ops.ecris.devices.ammeter import POSITIVE_VALUES_ONLY, BiasedAmmeter
+from ops.ecris.devices.ammeter import BiasedAmmeter
+from ops.ecris.devices.biases import POSITIVE_VALUES_ONLY
 from ops.ecris.drivers.base import DataSource
 
 

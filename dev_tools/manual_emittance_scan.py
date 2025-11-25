@@ -10,11 +10,15 @@ from ops.ecris.drivers.telnet_driver import TelnetDriver
 from ops.ecris.drivers.venus_plc import VenusPLC, VENUSController
 
 from ops.ecris.devices.motor_controller_specification import Axis
-from ops.ecris.devices.motor_controller import MotorController
-from ops.ecris.devices.ammeter import Ammeter, BiasedAmmeter, POSITIVE_VALUES_ONLY
-from ops.ecris.devices.power_supply import Voltmeter, VoltageSource, BiasedVoltageSource
-from ops.ecris.devices.deflection_plate_controller import (
+from ops.ecris.devices import (
+    MotorController,
+    BiasedAmmeter,
+    Voltmeter,
+    BiasedVoltageSource,
     DeflectionPlateController,
+)
+from ops.ecris.devices.biases import POSITIVE_VALUES_ONLY
+from ops.ecris.devices.deflection_plate_controller import (
     LABJACK_DEFLECTION_PLATE_BIAS,
 )
 
