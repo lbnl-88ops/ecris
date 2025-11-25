@@ -44,6 +44,20 @@ class LinearEmittanceScan(ABC):
             self.params.divergence_step,
         )
 
+    async def _connect_all_devices(self) -> None:
+        await asyncio.gather(
+            self._motor.connect(),
+            self._ammeter.connect(),
+            self._deflection_plate_controller.connect(),
+        )
+
+    async def _disconnect_all_devices(self) -> None:
+        await asyncio.gather(
+            self._motor.disconnect(),
+            self._ammeter.disconnect(),
+            self._deflection_plate_controller.disconnect(),
+        )
+
     async def run(self) -> np.ndarray:
         """
         Executes the emittance scan, collecting data and returning it as a 2D numpy array.
@@ -66,11 +80,7 @@ class LinearEmittanceScan(ABC):
 
             try:
                 _log.info("Connecting devices...")
-                await asyncio.gather(
-                    self._motor.connect(),
-                    self._ammeter.connect(),
-                    self._deflection_plate_controller.connect(),
-                )
+                await self._connect_all_devices()
                 _log.info("All devices connected.")
 
                 for i, position in enumerate(positions):
@@ -104,9 +114,5 @@ class LinearEmittanceScan(ABC):
             finally:
                 # --- Ensure devices are always disconnected, even if an error occurs ---
                 _log.info("Disconnecting all devices...")
-                await asyncio.gather(
-                    self._motor.disconnect(),
-                    self._ammeter.disconnect(),
-                    self._deflection_plate_controller.disconnect(),
-                )
+                await self._disconnect_all_devices()
                 _log.info("All devices disconnected.")

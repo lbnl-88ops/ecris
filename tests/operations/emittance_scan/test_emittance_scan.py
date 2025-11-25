@@ -69,6 +69,10 @@ class TestEmittanceScan:
         result_matrix = await scan_operation.run()
 
         # Motor calls
+        for mock in [mock_motor, mock_ammeter, mock_dpc]:
+            mock.connect.assert_awaited_once()
+            mock.disconnect.assert_awaited_once()
+
         expected_motor_calls = [
             call.move_to_position(scan_params.axis, pos) for pos in expected_positions
         ]
