@@ -58,6 +58,24 @@ class LinearEmittanceScan(ABC):
             self._deflection_plate_controller.disconnect(),
         )
 
+    async def _scan_divergences(self, divergences: np.ndarray) -> np.ndarray:
+        divergence_trace = np.zeros_like(divergences)
+        for j, divergence in enumerate(divergences):
+            _log.debug(f"  Setting divergence to {divergence:.4f} rad")
+            await self._deflection_plate_controller.set_divergence(divergence)
+
+            total_current = []
+            for _ in range(self.params.samples_per_point):
+                current_reading = await self._ammeter.read_current()
+                total_current.append(current_reading)
+            mean_current = np.mean(total_current)
+            divergence_trace[j] = mean_current
+            _log.debug(
+                f"  -> Collected {self.params.samples_per_point} samples. "
+                f"Averaged current: {mean_current:.4e} A"
+            )
+        return divergence_trace
+
     async def run(self) -> np.ndarray:
         """
         Executes the emittance scan, collecting data and returning it as a 2D numpy array.
@@ -90,22 +108,7 @@ class LinearEmittanceScan(ABC):
                     )
                     await self._motor.move_to_position(self.params.axis, position)
 
-                    position_trace = np.zeros((n_divergences,))
-                    for j, divergence in enumerate(divergences):
-                        _log.debug(f"  Setting divergence to {divergence:.4f} rad")
-                        await self._deflection_plate_controller.set_divergence(divergence)
-
-                        total_current = []
-                        for _ in range(self.params.samples_per_point):
-                            current_reading = await self._ammeter.read_current()
-                            total_current.append(current_reading)
-                        mean_current = np.mean(total_current)
-                        position_trace[j] = mean_current
-                        _log.debug(
-                            f"  -> Collected {self.params.samples_per_point} samples. "
-                            f"Averaged current: {mean_current:.4e} A"
-                        )
-                    beam_trace[:, i] = position_trace
+                    beam_trace[:, i] = await self._scan_divergences(divergences)
 
                 duration = time.monotonic() - start_time
                 _log.info(f"Emittance scan finished successfully in {duration:.2f} seconds.")
