@@ -23,6 +23,7 @@ from ops.ecris.devices.deflection_plate_controller import (
 )
 
 from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
+from ops.ecris.operations.emittance_scan.save_scan import save_emittance_scan
 
 
 # Set up basic logging to see the output from our scan classes
@@ -81,7 +82,13 @@ async def main(args):
         scan_params=scan_parameters,
     )
 
-    await scan_operation.run()
+    result = await scan_operation.run()
+    save_emittance_scan(
+        filepath="scan.h5",
+        data=result,
+        parameters=scan_parameters,
+        additional_metadata={"user": "manual_emittance_scan"},
+    )
 
     _log.info("--- Scan Configuration Summary ---")
     _log.info(f"               Axis: {scan_parameters.axis.name}")
