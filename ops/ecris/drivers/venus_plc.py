@@ -121,6 +121,7 @@ VENUS_PLC_DATA_DEFINITIONS = DeviceData(
             ("Inductive oven frequency", "kHz", "ind_oven_frequency"),
             ("Inductive oven requested current", "A", "ind_oven_req"),
             ("Inductive oven power", "W", "ind_oven_watts"),
+            ("Inductive oven status", "nan", "ind_oven_status"),
             ("Low temperature oven 1 temperature set point", "C", "lt_oven_1_sp"),
             ("Low temperature oven 1 temperature", "C", "lt_oven_1_temp"),
             ("Low temperature oven 2 temperature set point", "C", "lt_oven_2_sp"),
