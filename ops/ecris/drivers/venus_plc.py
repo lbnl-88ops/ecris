@@ -64,6 +64,9 @@ VENUS_PLC_DATA_DEFINITIONS = DeviceData(
             ("Puller voltage setpoint", "V", "puller_v_set"),
             ("Robin magnet current", "A", "robin_i"),
             ("Robin magnet current setpoint", "A", "robin_i_set"),
+            ("South (top knob) slit", None, "slit_south"),
+            ("North (bottom know) slit", None, "slit_north"),
+            ("Tuner ID", None, "tuner_number"),
         ],
         "Cryostat": [
             (
@@ -90,6 +93,7 @@ VENUS_PLC_DATA_DEFINITIONS = DeviceData(
                 "percentage",
                 "LHe_level_percent",
             ),
+            ("Liquid helium level", "in", "LHe_level"),
             ("Liquid helium pressure", "psi", "LHe_psi"),
             ("Conduction bar temperature", "K", "seventy_k_cond_bar"),
         ],
