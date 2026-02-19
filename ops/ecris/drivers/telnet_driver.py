@@ -118,7 +118,9 @@ class TelnetDriver(SessionDriver):
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot read.")
         try:
+            _log.debug(f"Awaiting read to terminator {separator.encode(self.encoding)!r}")
             raw_bytes = await self._reader.readuntil(separator.encode(self.encoding))
+            _log.debug(f"Raw response {raw_bytes!r}")
             response = raw_bytes.decode(self.encoding)
             if self._prompt is not None:
                 response = response.removeprefix(self._prompt)
