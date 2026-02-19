@@ -26,6 +26,7 @@ packages = [ { include = "ops/ecris" } ]
 
 [dependency-groups]
 dev = [
+    "rich",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
