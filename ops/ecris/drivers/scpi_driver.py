@@ -81,7 +81,9 @@ class SCPIDriver(TelnetDriver):
                 try:
                     async with asyncio.timeout(2.0):  # Overall timeout for the read operation
                         while True:
+                            _log.debug("Reading current")
                             response = await self.send_command(SCPIDriver.Commands.MEASURE_CURRENT)
+                            _log.debug(f"Raw response {response!r}")
                             try:
                                 return float(response)
                             except ValueError or AssertionError:

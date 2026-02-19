@@ -44,3 +44,4 @@ class Keithley(SCPIDriver):
         ]
         for command in setup_commands:
             await self.send_silent_command(command)
+        _log.debug(f"Setup complete.")
