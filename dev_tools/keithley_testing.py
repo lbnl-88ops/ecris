@@ -12,7 +12,7 @@ from ops.ecris.devices.ammeter import Ammeter
 from ops.ecris.drivers.keithley import Keithley
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-_log = logging.getLogger()
+_log = logging.getLogger("ops")
 
 IPS = {1: "10.10.100.82", 2: "10.10.100.83"}
 PORT = 23
@@ -43,11 +43,11 @@ async def run_test(mod: int):
             avg_time_ms = np.average(times) * 1000
             rate_hz = 1 / np.average(times)
 
-            print("Results:")
+            print("[green bold]Results:[/green bold]")
             print(f" > Average response time {avg_time_ms:.2f} ms")
-            _log.info(f"Effective sample rate: {rate_hz:.2f} Hz")
-            _log.info(f"Current average: {np.average(current_readings):.5E} A")
-            _log.info(f"Current stdev: {np.std(current_readings):.5E} A")
+            print(f" > Effective sample rate: {rate_hz:.2f} Hz")
+            print(f" > Current average: {np.average(current_readings):.5E} A")
+            print(f" > Current stdev: {np.std(current_readings):.5E} A")
         except:
             await keithley_driver.disconnect()
 

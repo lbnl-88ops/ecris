@@ -24,7 +24,9 @@ class Keithley(SCPIDriver):
         await self.send_silent_command(SCPIDriver.Commands.CLEAR_BUFFER)
         response = await self.send_command(SCPIDriver.Commands.TEST)
         if response != "0":
-            raise ConnectionError(f"Handshake failed, response: {response}")
+            response = await self.send_command("\n")
+            if response != "0":
+                raise ConnectionError(f"Handshake failed, response: {response}")
         response = await self.send_command(SCPIDriver.Commands.IDENTITY)
         if isinstance(response, list):
             response = " ".join(response)
@@ -43,6 +45,6 @@ class Keithley(SCPIDriver):
             SCPIDriver.Commands.INPUT_ON,
         ]
         for command in setup_commands:
-            _log.debug(f"Sending silent command {command}")
             await self.send_silent_command(command)
+        await asyncio.sleep(5)
         _log.debug(f"Setup complete.")

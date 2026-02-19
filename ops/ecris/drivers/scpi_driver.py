@@ -59,7 +59,6 @@ class SCPIDriver(TelnetDriver):
     async def send_silent_command(self, command: str) -> None:
         """Send a command with no expected response"""
         await self._write(command)
-        await asyncio.sleep(0.1)
 
     async def send_command(self, command: str) -> List[str] | str | None:
         await self._write(command)
