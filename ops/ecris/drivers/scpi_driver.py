@@ -21,6 +21,9 @@ class SCPIDriver(TelnetDriver):
         CURRENT_AUTO_RANGE = ":sens:curr:rang:auto on"
         CURRENT_NPLC_AUTO_OFF = ":sens:curr:nplc:auto off"
         INPUT_ON = ":inp on"
+        TEST = "*tst?"  # returns 0, generally for handshake
+        IDENTITY = "*idn?"  # Returns identity
+        SET_LANG = "*lang scpi"
 
     def __init__(
         self,
@@ -100,5 +103,8 @@ class SCPIDriver(TelnetDriver):
 
     async def reset(self) -> None:
         _log.debug(f"Resetting {self.id} at {self._host}...")
-        await self.send_command(SCPIDriver.Commands.RESET)
+        if self.command_echo:
+            await self.send_command(SCPIDriver.Commands.RESET)
+        else:
+            await self.send_silent_command(SCPIDriver.Commands.RESET)
         _log.debug(f"{self.id} reset.")
