@@ -20,11 +20,15 @@ class Keithley(SCPIDriver):
         super().__init__(read_frequency_per_min, ip, port, prompt, id, command_echo=False)
 
     async def _handshake(self) -> None:
+        await self.send_silent_command(SCPIDriver.Commands.SET_LANG)
+        await self.send_silent_command(SCPIDriver.Commands.CLEAR_BUFFER)
         response = await self.send_command(SCPIDriver.Commands.TEST)
         if response != "0":
             raise ConnectionError(f"Handshake failed, response: {response}")
         response = await self.send_command(SCPIDriver.Commands.IDENTITY)
-        _log.info(f"Successfully connected to {' '.join(response)}.")
+        if isinstance(response, list):
+            response = " ".join(response)
+        _log.info(f"Successfully connected to {response}.")
         return
 
     async def _setup(self) -> None:
@@ -32,7 +36,6 @@ class Keithley(SCPIDriver):
         _log.debug(f"Setting up {self.id} at {self._host}...")
         await asyncio.sleep(2)
         setup_commands = [
-            SCPIDriver.Commands.SET_LANG,
             SCPIDriver.Commands.CURRENT_FUNCTION,
             SCPIDriver.Commands.CURRENT_AUTO_RANGE,
             SCPIDriver.Commands.CURRENT_NPLC_AUTO_OFF,

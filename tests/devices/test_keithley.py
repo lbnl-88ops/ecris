@@ -23,6 +23,8 @@ async def test_connect_sends_correct_commands(mock_keithley_connection):
     keithley, mock_reader, mock_writer, mock_open_conn = mock_keithley_connection
     expected_nplc = 1.0
     handshake_commands = [
+        "*lang scpi",
+        ":trace:clear",
         "*tst?",
         "*idn?",
     ]
@@ -31,7 +33,6 @@ async def test_connect_sends_correct_commands(mock_keithley_connection):
     reset_command = ["*rst"]
 
     setup_commands = [
-        "*lang scpi",
         ':sens:func "curr"',
         ":sens:curr:rang:auto on",
         ":sens:curr:nplc:auto off",

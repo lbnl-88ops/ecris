@@ -32,21 +32,24 @@ async def run_test(mod: int):
         iterations = 100
         current_readings = []
         times = []
-        for i in track(range(iterations), description="Testing..."):
-            start_time = time.perf_counter()
-            value = await ammeter.read_current()
-            end_time = time.perf_counter()
-            current_readings.append(value)
-            times.append(end_time - start_time)
-        await keithley_driver.disconnect()
-        avg_time_ms = np.average(times) * 1000
-        rate_hz = 1 / np.average(times)
+        try:
+            for i in track(range(iterations), description="Testing..."):
+                start_time = time.perf_counter()
+                value = await ammeter.read_current()
+                end_time = time.perf_counter()
+                current_readings.append(value)
+                times.append(end_time - start_time)
+            await keithley_driver.disconnect()
+            avg_time_ms = np.average(times) * 1000
+            rate_hz = 1 / np.average(times)
 
-        print("Results:")
-        print(f" > Average response time {avg_time_ms:.2f} ms")
-        _log.info(f"Effective sample rate: {rate_hz:.2f} Hz")
-        _log.info(f"Current average: {np.average(current_readings):.5E} A")
-        _log.info(f"Current stdev: {np.std(current_readings):.5E} A")
+            print("Results:")
+            print(f" > Average response time {avg_time_ms:.2f} ms")
+            _log.info(f"Effective sample rate: {rate_hz:.2f} Hz")
+            _log.info(f"Current average: {np.average(current_readings):.5E} A")
+            _log.info(f"Current stdev: {np.std(current_readings):.5E} A")
+        except:
+            await keithley_driver.disconnect()
 
 
 if __name__ == "__main__":

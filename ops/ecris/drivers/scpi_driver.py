@@ -23,6 +23,7 @@ class SCPIDriver(TelnetDriver):
         INPUT_ON = ":inp on"
         TEST = "*tst?"  # returns 0, generally for handshake
         IDENTITY = "*idn?"  # Returns identity
+        CLEAR_BUFFER = ":trace:clear"
         SET_LANG = "*lang scpi"
 
     def __init__(
