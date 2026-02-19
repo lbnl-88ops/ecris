@@ -24,7 +24,7 @@ class Keithley(SCPIDriver):
         if response != "0":
             raise ConnectionError(f"Handshake failed, response: {response}")
         response = await self.send_command(SCPIDriver.Commands.IDENTITY)
-        _log.info(f"Successfully connected to {response}.")
+        _log.info(f"Successfully connected to {' '.join(response)}.")
         return
 
     async def _setup(self) -> None:
