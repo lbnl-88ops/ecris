@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools >= 77.0.3", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "ops.ecris"
@@ -17,22 +17,21 @@ dependencies = [
     "telnetlib3",
     "labjack-ljm",
     "websockets",
+    "h5py",
 ]
 
-[project.optional-dependencies]
+[tool.poetry]
+version = "0.2.2"
+packages = [ { include = "ops/ecris" } ]
+
+[dependency-groups]
 dev = [
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
+    "ruff",
+    "pyright",
 ]
-
-[tool.setuptools.packages.find]
-where = [""]          
-include = ["ops.ecris*"]
-exclude = ["tests*"]    
-
-[tool.setuptools.dynamic]
-version = {attr = "ops.ecris.__version__"}
 
 [tool.pytest.ini_options]
 pythonpath = [ 

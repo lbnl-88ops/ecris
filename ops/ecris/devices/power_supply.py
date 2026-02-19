@@ -1,8 +1,9 @@
 from logging import getLogger
-from typing import Any, Callable
+from typing import Any
 
 from ops.ecris.drivers import DataSource
 from .base import _LogicalDeviceBase
+from .biases import BiasFunction
 
 _log = getLogger(__name__)
 
@@ -32,9 +33,7 @@ class PowerSupply(Voltmeter, VoltageSource):
 
 
 class BiasedVoltageSource(VoltageSource):
-    def __init__(
-        self, connection: DataSource, set_key: Any, bias_function: Callable[[float], float]
-    ):
+    def __init__(self, connection: DataSource, set_key: Any, bias_function: BiasFunction):
         super().__init__(connection, set_key)
         self._bias_function = bias_function
 

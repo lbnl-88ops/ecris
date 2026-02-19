@@ -1,20 +1,9 @@
 from logging import getLogger
-from typing import Any, Callable
+from typing import Any
 
 from ops.ecris.drivers import DataSource
 from .base import _LogicalDeviceBase
-
-
-def POSITIVE_VALUES_ONLY(current: float) -> float:
-    return max(0, current)
-
-
-def INVERT_VALUES(current: float) -> float:
-    return -current
-
-
-def POSITIVE_VALUES_ONLY_AFTER_INVERSION(current: float) -> float:
-    return POSITIVE_VALUES_ONLY(INVERT_VALUES(current))
+from .biases import BiasFunction
 
 
 class Ammeter(_LogicalDeviceBase):
@@ -28,9 +17,7 @@ class Ammeter(_LogicalDeviceBase):
 
 
 class BiasedAmmeter(Ammeter):
-    def __init__(
-        self, connection: DataSource, read_key: Any, bias_function: Callable[[float], float]
-    ):
+    def __init__(self, connection: DataSource, read_key: Any, bias_function: BiasFunction):
         super().__init__(connection, read_key)
         self._bias_function = bias_function
 

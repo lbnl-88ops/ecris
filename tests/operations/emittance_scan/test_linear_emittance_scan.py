@@ -2,8 +2,7 @@ import pytest
 import numpy as np
 from unittest.mock import AsyncMock, call, MagicMock
 
-from ops.ecris.operations.emittance_scan.base import LinearEmittanceScan
-from ops.ecris.operations.emittance_scan.parameters import LinearScanParameters
+from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
 from ops.ecris.devices.motor_controller import MotorController
 from ops.ecris.devices.ammeter import Ammeter
 from ops.ecris.devices.motor_controller_specification import Axis
@@ -69,6 +68,10 @@ class TestEmittanceScan:
         result_matrix = await scan_operation.run()
 
         # Motor calls
+        for mock in [mock_motor, mock_ammeter, mock_dpc]:
+            mock.connect.assert_awaited_once()
+            mock.disconnect.assert_awaited_once()
+
         expected_motor_calls = [
             call.move_to_position(scan_params.axis, pos) for pos in expected_positions
         ]

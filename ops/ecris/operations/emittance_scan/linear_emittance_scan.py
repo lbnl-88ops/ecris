@@ -26,7 +26,6 @@ class LinearEmittanceScan(ABC):
         self._ammeter = ammeter
         self._deflection_plate_controller = deflection_plate_controller
         self.params = scan_params
-        self._results = []
 
     @property
     def position_array(self) -> np.ndarray:
@@ -44,17 +43,51 @@ class LinearEmittanceScan(ABC):
             self.params.divergence_step,
         )
 
+    async def _connect_all_devices(self) -> None:
+        _log.info("Connecting devices...")
+        await asyncio.gather(
+            self._motor.connect(),
+            self._ammeter.connect(),
+            self._deflection_plate_controller.connect(),
+        )
+        _log.info("All devices connected.")
+
+    async def _disconnect_all_devices(self) -> None:
+        _log.info("Disconnecting all devices...")
+        await asyncio.gather(
+            self._motor.disconnect(),
+            self._ammeter.disconnect(),
+            self._deflection_plate_controller.disconnect(),
+        )
+        _log.info("All devices disconnected.")
+
+    async def _scan_divergences(self, divergences: np.ndarray) -> np.ndarray:
+        divergence_trace = np.zeros_like(divergences)
+        for j, divergence in enumerate(divergences):
+            _log.debug(f"  Setting divergence to {divergence:.4f} rad")
+            await self._deflection_plate_controller.set_divergence(divergence)
+
+            total_current = []
+            for _ in range(self.params.samples_per_point):
+                current_reading = await self._ammeter.read_current()
+                total_current.append(current_reading)
+            mean_current = np.mean(total_current)
+            divergence_trace[j] = mean_current
+            _log.debug(
+                f"  -> Collected {self.params.samples_per_point} samples. "
+                f"Averaged current: {mean_current:.4e} A"
+            )
+        return divergence_trace
+
     async def run(self) -> np.ndarray:
         """
         Executes the emittance scan, collecting data and returning it as a 2D numpy array.
         """
         async with self._scan_lock:
             start_time = time.monotonic()
-            positions = self.position_array
-            divergences = self.divergence_array
 
-            n_positions = len(positions)
-            n_divergences = len(divergences)
+            n_positions = len(self.position_array)
+            n_divergences = len(self.divergence_array)
             beam_trace = np.zeros((n_divergences, n_positions))
 
             _log.info(
@@ -65,37 +98,15 @@ class LinearEmittanceScan(ABC):
             _log.info(f"Sampling {self.params.samples_per_point} points per measurement.")
 
             try:
-                _log.info("Connecting devices...")
-                await asyncio.gather(
-                    self._motor.connect(),
-                    self._ammeter.connect(),
-                    self._deflection_plate_controller.connect(),
-                )
-                _log.info("All devices connected.")
+                await self._connect_all_devices()
 
-                for i, position in enumerate(positions):
+                for i, position in enumerate(self.position_array):
                     _log.info(f"Processing position {i + 1}/{n_positions}: {position:.3f} mm")
                     _log.debug(
                         f"Moving to position {position:.3f} on axis {self.params.axis.name}"
                     )
                     await self._motor.move_to_position(self.params.axis, position)
-
-                    position_trace = np.zeros((n_divergences,))
-                    for j, divergence in enumerate(divergences):
-                        _log.debug(f"  Setting divergence to {divergence:.4f} rad")
-                        await self._deflection_plate_controller.set_divergence(divergence)
-
-                        total_current = []
-                        for _ in range(self.params.samples_per_point):
-                            current_reading = await self._ammeter.read_current()
-                            total_current.append(current_reading)
-                        mean_current = np.mean(total_current)
-                        position_trace[j] = mean_current
-                        _log.debug(
-                            f"  -> Collected {self.params.samples_per_point} samples. "
-                            f"Averaged current: {mean_current:.4e} A"
-                        )
-                    beam_trace[:, i] = position_trace
+                    beam_trace[:, i] = await self._scan_divergences(self.divergence_array)
 
                 duration = time.monotonic() - start_time
                 _log.info(f"Emittance scan finished successfully in {duration:.2f} seconds.")
@@ -103,10 +114,4 @@ class LinearEmittanceScan(ABC):
 
             finally:
                 # --- Ensure devices are always disconnected, even if an error occurs ---
-                _log.info("Disconnecting all devices...")
-                await asyncio.gather(
-                    self._motor.disconnect(),
-                    self._ammeter.disconnect(),
-                    self._deflection_plate_controller.disconnect(),
-                )
-                _log.info("All devices disconnected.")
+                await self._disconnect_all_devices()

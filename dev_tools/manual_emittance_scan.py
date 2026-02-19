@@ -10,16 +10,20 @@ from ops.ecris.drivers.telnet_driver import TelnetDriver
 from ops.ecris.drivers.venus_plc import VenusPLC, VENUSController
 
 from ops.ecris.devices.motor_controller_specification import Axis
-from ops.ecris.devices.motor_controller import MotorController
-from ops.ecris.devices.ammeter import Ammeter, BiasedAmmeter, POSITIVE_VALUES_ONLY
-from ops.ecris.devices.power_supply import Voltmeter, VoltageSource, BiasedVoltageSource
-from ops.ecris.devices.deflection_plate_controller import (
+from ops.ecris.devices import (
+    MotorController,
+    BiasedAmmeter,
+    Voltmeter,
+    BiasedVoltageSource,
     DeflectionPlateController,
+)
+from ops.ecris.devices.biases import POSITIVE_VALUES_ONLY
+from ops.ecris.devices.deflection_plate_controller import (
     LABJACK_DEFLECTION_PLATE_BIAS,
 )
 
-from ops.ecris.operations.emittance_scan.base import LinearEmittanceScan
-from ops.ecris.operations.emittance_scan.parameters import LinearScanParameters
+from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
+from ops.ecris.operations.emittance_scan.save_scan import save_emittance_scan
 
 
 # Set up basic logging to see the output from our scan classes
@@ -78,7 +82,13 @@ async def main(args):
         scan_params=scan_parameters,
     )
 
-    await scan_operation.run()
+    result = await scan_operation.run()
+    save_emittance_scan(
+        filepath="scan.h5",
+        data=result,
+        parameters=scan_parameters,
+        additional_metadata={"user": "manual_emittance_scan"},
+    )
 
     _log.info("--- Scan Configuration Summary ---")
     _log.info(f"               Axis: {scan_parameters.axis.name}")

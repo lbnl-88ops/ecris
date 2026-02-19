@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock, call
 
-from ops.ecris.drivers.keithley import Keysight
+from ops.ecris.drivers.keysight import Keysight
 
 
 @pytest.fixture

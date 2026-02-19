@@ -1,6 +1,54 @@
 # ecris.csd
 Codes for taking on-line ECRIS charge state distributions
 
+# Development Setup
+
+If you want to contribute to `ops.ecris` or run the tests locally, follow these steps to set up your development environment.
+
+## 1. Clone the repository
+```bash
+git clone https://github.com/lbnl-88ops/ecris.git
+cd ecris
+```
+
+## 2. Create a virtual environment
+It is recommended to use a virtual environment to keep dependencies isolated.
+
+**Mac/Linux:**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+**Windows (PowerShell):**
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+## 3. Install in Editable Mode
+Install the package in "editable" mode along with the development dependencies (pytest, ruff, etc.).
+
+```bash
+pip install -e ".[dev]"
+```
+*Note: The `.` refers to the current directory. The `[dev]` tells pip to install the optional dependencies listed in `pyproject.toml`.*
+
+## 4. Run Tests
+You can now run the test suite to ensure everything is working.
+
+```bash
+pytest
+```
+
+## 5. Linting and Type Checking
+We use `ruff` for linting and `pyright` for type checking.
+
+```bash
+ruff check .
+pyright
+```
+
 # Beamline Computer
 
 The beamline computer runs the python script for taking fast CSDs using a service. Commands for status/start/stop:
