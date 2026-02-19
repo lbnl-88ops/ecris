@@ -111,8 +111,11 @@ class TelnetDriver(SessionDriver):
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot write.")
         encoded_command = (command + self._command_terminator).encode(self.encoding)
+        _log.debug(f"Writing command {encoded_command!r}")
         self._writer.write(encoded_command)
+        _log.debug(f"Draining buffer")
         await self._writer.drain()
+        _log.debug(f"Buffer drained")
 
     async def _read_until(self, separator: str = "\n") -> str:
         if not self.is_connected:
