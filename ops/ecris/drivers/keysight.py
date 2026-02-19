@@ -14,4 +14,4 @@ class Keysight(SCPIDriver):
         prompt: str = "B2900A>",
         id: str = "KeySight B2900A",
     ):
-        super().__init__(read_frequency_per_min, ip, port, prompt, id)
+        super().__init__(read_frequency_per_min, ip, port, prompt, id, command_echo=True)

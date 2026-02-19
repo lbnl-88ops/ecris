@@ -29,6 +29,7 @@ class SCPIDriver(TelnetDriver):
         port: int | None = None,
         prompt: str | None = None,
         id: str = "SCPI Device",
+        command_echo: bool = False,
     ):
         super().__init__(id, ip, port, prompt)
 
@@ -39,6 +40,7 @@ class SCPIDriver(TelnetDriver):
 
         self.nplc_setting = 1 / read_frequency_per_min * 60.0
         self.id = id
+        self.command_echo = command_echo
 
     @property
     def readable_keys(self) -> Set[DataKeys]:
@@ -50,12 +52,21 @@ class SCPIDriver(TelnetDriver):
         """Returns the set of keys that can be written to the device."""
         return set()
 
+    async def send_silent_command(self, command: str) -> None:
+        """Send a command with no expected response"""
+        await self._write(command)
+
     async def send_command(self, command: str) -> List[str] | str | None:
         await self._write(command)
         terminator = self._prompt if self._prompt is not None else "\n"
         raw_response = await self._read_until(terminator)
-        response_lines = [l.strip() for l in raw_response.split()]
-        response = [l for l in response_lines if l != self._prompt and l != command]
+        response = [l.strip() for l in raw_response.split()]
+
+        if self._prompt is not None:
+            response = [l for l in response if l != self._prompt]
+        if self.command_echo is not None:
+            response = [l for l in response if l != command]
+
         if len(response) == 1:
             return response[0]
         return response
