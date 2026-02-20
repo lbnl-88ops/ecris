@@ -80,6 +80,7 @@ class TelnetDriver(SessionDriver):
                 _log.debug("Connected, performing handshake...")
                 await self._handshake()
                 _log.debug("Handshake complete, performing setup...")
+                # TODO: Move this out of connect
                 await self._setup()
                 # _log.debug(f"Awaiting initial response, expected prompt = {self._prompt}")
                 # response = await asyncio.wait_for(self._read_until(self._prompt), 1.0)

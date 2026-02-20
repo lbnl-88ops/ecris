@@ -11,13 +11,13 @@ ID: str = "Keithley DMM7512"
 class Keithley(SCPIDriver):
     def __init__(
         self,
-        read_frequency_per_min: float,
+        sample_frequency_hz: float,
         ip: str | None = None,
         port: int | None = None,
         prompt=None,
         id=ID,
     ):
-        super().__init__(read_frequency_per_min, ip, port, prompt, id, command_echo=False)
+        super().__init__(sample_frequency_hz, ip, port, prompt, id, command_echo=False)
 
     async def _handshake(self) -> None:
         await self.send_silent_command(SCPIDriver.Commands.SET_LANG)
@@ -40,11 +40,10 @@ class Keithley(SCPIDriver):
         setup_commands = [
             SCPIDriver.Commands.CURRENT_FUNCTION,
             SCPIDriver.Commands.CURRENT_AUTO_RANGE,
-            SCPIDriver.Commands.CURRENT_NPLC_AUTO_OFF,
             SCPIDriver.Commands.SET_NPLC.format(self.nplc_setting),
-            SCPIDriver.Commands.INPUT_ON,
         ]
         for command in setup_commands:
+            print("sending command {command}")
             await self.send_silent_command(command)
         await asyncio.sleep(5)
         _log.debug(f"Setup complete.")

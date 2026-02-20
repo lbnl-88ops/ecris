@@ -11,10 +11,12 @@ _log = getLogger(__name__)
 class SCPIDriver(TelnetDriver):
     class DataKeys(Enum):
         CURRENT = auto()
+        VOLTAGE = auto()
         NPLC_SETTING = auto()
 
     class Commands(StrEnum):
         MEASURE_CURRENT = "meas:curr?"
+        MEASURE_VOLTAGE = "meas:volt?"
         RESET = "*rst"
         SET_NPLC = ":sens:curr:nplc {}"
         CURRENT_FUNCTION = ':sens:func "curr"'
@@ -28,7 +30,7 @@ class SCPIDriver(TelnetDriver):
 
     def __init__(
         self,
-        read_frequency_per_min: float,
+        sample_frequency_hz: float,
         ip: str | None = None,
         port: int | None = None,
         prompt: str | None = None,
@@ -37,12 +39,12 @@ class SCPIDriver(TelnetDriver):
     ):
         super().__init__(id, ip, port, prompt)
 
-        if not 1 <= read_frequency_per_min <= 2000:
-            raise ValueError(
-                f"Bad value of read frequency {read_frequency_per_min} (must be 1-2000)"
-            )
+        # if not 1 <= read_frequency_per_min <= 2000:
+        #     raise ValueError(
+        #         f"Bad value of read frequency {read_frequency_per_min} (must be 1-2000)"
+        #     )
 
-        self.nplc_setting = 1 / read_frequency_per_min * 60.0
+        self.nplc_setting = 6000 / sample_frequency_hz
         self.id = id
         self.command_echo = command_echo
 
@@ -78,24 +80,28 @@ class SCPIDriver(TelnetDriver):
     async def read_data(self, data_key: DataKeys) -> float:
         match data_key:
             case SCPIDriver.DataKeys.CURRENT:
-                try:
-                    async with asyncio.timeout(2.0):  # Overall timeout for the read operation
-                        while True:
-                            _log.debug("Reading current")
-                            response = await self.send_command(SCPIDriver.Commands.MEASURE_CURRENT)
-                            _log.debug(f"Raw response {response!r}")
-                            try:
-                                return float(response)
-                            except ValueError or AssertionError:
-                                _log.debug(
-                                    f"Error in current measurement, non-float response: {response!r}"
-                                )
-                except TimeoutError:
-                    _log.error(
-                        f"Timeout occurred while waiting for a valid numeric response from {self.id}."
-                    )
-                    raise ConnectionAbortedError(f"Connection to {self.id} timed out.")
-        raise KeyError(f"Read operation for data_key {data_key.name} not implemented.")
+                command = SCPIDriver.Commands.MEASURE_CURRENT
+            case SCPIDriver.DataKeys.VOLTAGE:
+                command = SCPIDriver.Commands.MEASURE_VOLTAGE
+            case _:
+                raise KeyError(f"Read operation for data_key {data_key.name} not implemented.")
+        try:
+            async with asyncio.timeout(2.0):  # Overall timeout for the read operation
+                while True:
+                    _log.debug("Reading current")
+                    response = await self.send_command(command)
+                    _log.debug(f"Raw response {response!r}")
+                    try:
+                        return float(response)
+                    except ValueError or AssertionError:
+                        _log.debug(
+                            f"Error in current measurement, non-float response: {response!r}"
+                        )
+        except TimeoutError:
+            _log.error(
+                f"Timeout occurred while waiting for a valid numeric response from {self.id}."
+            )
+            raise ConnectionAbortedError(f"Connection to {self.id} timed out.")
 
     async def write_data(self, data_key: DataKeys, value: float) -> None:
         raise KeyError(f"Write operation for data_key {data_key.name} not implemented.")
