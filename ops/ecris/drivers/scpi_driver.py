@@ -1,9 +1,10 @@
 import asyncio
 from logging import getLogger
-from typing import Set, List
+from typing import Set, List, Tuple
 from enum import Enum, auto, StrEnum
 
 from .telnet_driver import TelnetDriver
+import numpy as np
 
 _log = getLogger(__name__)
 
@@ -22,11 +23,22 @@ class SCPIDriver(TelnetDriver):
         CURRENT_FUNCTION = ':sens:func "curr"'
         CURRENT_AUTO_RANGE = ":sens:curr:rang:auto on"
         CURRENT_NPLC_AUTO_OFF = ":sens:curr:nplc:auto off"
+        CURRENT_SET_APERATURE = ":sens:curr:aper {}"
+        CURRENT_GET_APERATURE = ":sens:curr:aper?"
+        SET_COUNT = ":sens:count {}"
+        GET_COUNT = ":sens:count?"
         INPUT_ON = ":inp on"
         TEST = "*tst?"  # returns 0, generally for handshake
         IDENTITY = "*idn?"  # Returns identity
         CLEAR_BUFFER = ":trace:clear"
         SET_LANG = "*lang scpi"
+        READ = ":read?"
+
+        def get_trace_data(start, end, buffer_name):
+            return f':trace:data? {start}, {end}, "{buffer_name}"'
+
+        def get_trace_time(start, end, buffer_name):
+            return f':trace:data? {start}, {end}, "{buffer_name}", TIME'
 
     def __init__(
         self,
@@ -76,6 +88,45 @@ class SCPIDriver(TelnetDriver):
         if len(response) == 1:
             return response[0]
         return response
+
+    async def read_data_points(
+        self, data_key: DataKeys, n_points: int, timing: float
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        match data_key:
+            case SCPIDriver.DataKeys.CURRENT:
+                aperature_command = SCPIDriver.Commands.CURRENT_GET_APERATURE
+            case _:
+                raise KeyError(f"Read operation for data_key {data_key.name} not implemented.")
+        try:
+            async with asyncio.timeout(2.0):  # Overall timeout for the read operation
+                while True:
+                    await self.send_command(SCPIDriver.Commands.SET_COUNT.format(n_points))
+                    await self.send_command(
+                        SCPIDriver.Commands.CURRENT_SET_APERATURE.format(timing)
+                    )
+                    await self.send_command(SCPIDriver.Commands.READ)
+                    data_response = await self.send_command(
+                        SCPIDriver.Commands.get_trace_data(1, n_points, "defbuffer1")
+                    )
+
+                    time_response = await self.send_command(
+                        SCPIDriver.Commands.get_trace_time(1, n_points, "defbuffer1")
+                    )
+                    await self.send_command(SCPIDriver.Commands.CLEAR_BUFFER)
+
+                    try:
+                        data = np.ndarray([float(v) for v in data_response.split(",")])
+                        time = np.ndarray([float(v) for v in time_response.split(",")])
+                        return data, time
+                    except ValueError or AssertionError:
+                        _log.debug(
+                            f"Error in current measurement, non-float response: {data!r}, {time!r}"
+                        )
+        except TimeoutError:
+            _log.error(
+                f"Timeout occurred while waiting for a valid numeric response from {self.id}."
+            )
+            raise ConnectionAbortedError(f"Connection to {self.id} timed out.")
 
     async def read_data(self, data_key: DataKeys) -> float:
         match data_key:
