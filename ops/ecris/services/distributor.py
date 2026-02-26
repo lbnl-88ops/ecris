@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from typing import List
+
 from ops.ecris.drivers.measurement import Measurement
 
 _log = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ class DataDistributor:
     def n_subscribers(self) -> int:
         return len(self._subscriber_queues)
 
-    async def run(self): 
+    async def run(self):
         _log.info("DataDistributor is running...")
         while True:
             measurement: Measurement = await self._input_queue.get()

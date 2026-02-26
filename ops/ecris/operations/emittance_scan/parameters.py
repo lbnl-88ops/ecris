@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from ops.ecris.devices.motor_controller_specification import Axis
 
 CAPACITOR_PLATE_DISTANCE_IN_M = 0.0189992

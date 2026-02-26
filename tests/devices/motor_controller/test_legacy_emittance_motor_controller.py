@@ -1,17 +1,18 @@
-from ops.ecris.legacy.emittance_scan import FatalError, Motor
-from ops.ecris.legacy.mappings import LEGACY_AXIS_MAPPING
-from .helpers import FakeMotorController, set_up_test, FakeState, MoveSequences
-from ops.ecris.devices.motor_controller_specification import (
-    Axis,
-    Commands,
-    PERPENDICULAR_AXIS,
-    Bit,
-    MID_POINT_OFFSETS,
-)
-
-from unittest.mock import patch, call
+from unittest.mock import call, patch
 
 import pytest
+
+from ops.ecris.devices.motor_controller_specification import (
+    MID_POINT_OFFSETS,
+    PERPENDICULAR_AXIS,
+    Axis,
+    Bit,
+    Commands,
+)
+from ops.ecris.legacy.emittance_scan import FatalError, Motor
+from ops.ecris.legacy.mappings import LEGACY_AXIS_MAPPING
+
+from .helpers import FakeMotorController, FakeState, MoveSequences, set_up_test
 
 MODULE = "ops.ecris.legacy.emittance_scan."
 

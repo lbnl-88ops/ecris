@@ -1,9 +1,9 @@
 # Save emittance scans to an hdf5 file with metadata
 import dataclasses
 import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
-from enum import Enum
 
 import h5py
 import numpy as np

@@ -1,7 +1,7 @@
-from logging import getLogger
 from typing import Any
 
 from ops.ecris.drivers import DataSource
+
 from .base import _LogicalDeviceBase
 from .biases import BiasFunction
 

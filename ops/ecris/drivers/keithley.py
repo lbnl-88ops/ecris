@@ -9,6 +9,13 @@ ID: str = "Keithley DMM7512"
 
 
 class Keithley(SCPIDriver):
+    """
+    Driver for Keithley DMM7512 digital multimeters.
+
+    This class extends SCPIDriver with specific handshake and setup routines
+    tailored for Keithley instruments.
+    """
+
     def __init__(
         self,
         sample_frequency_hz: float,
@@ -50,4 +57,4 @@ class Keithley(SCPIDriver):
             print(f"sending command {command}")
             await self.send_silent_command(command)
         await asyncio.sleep(5)
-        _log.debug(f"Setup complete.")
+        _log.debug("Setup complete.")

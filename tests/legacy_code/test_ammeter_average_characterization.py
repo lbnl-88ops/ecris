@@ -1,17 +1,18 @@
 # Characterization tests for legacy/current code
-from unittest.mock import patch, MagicMock, AsyncMock, call
-
 import asyncio
+import time
+from unittest.mock import AsyncMock, MagicMock, call, patch
+
 import pytest
 from pytest import approx
-import time
 
-from ops.ecris.drivers.measurement import AverageMeasurement
-from ops.ecris.operations.producers import time_average_current
-from ops.ecris.tasks.device_broadcasters import update_plc_average_current
-from ops.ecris.drivers.venus_plc import VenusPLC
 from ops.ecris.devices.ammeter import Ammeter
 from ops.ecris.drivers.keysight import Keysight
+from ops.ecris.drivers.measurement import AverageMeasurement
+from ops.ecris.drivers.venus_plc import VenusPLC
+from ops.ecris.operations.producers import time_average_current
+from ops.ecris.tasks.device_broadcasters import update_plc_average_current
+
 from .ammeter_legacy_functions import legacy_current_measurement
 
 LEGACY_MODULE = "tests.legacy_code.ammeter_legacy_functions."

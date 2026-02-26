@@ -1,18 +1,14 @@
 import logging
-import asyncio
 import time
 
-import pyvisa
 import numpy as np
-import matplotlib.pyplot as plt
-
-from ops.ecris.drivers import keithley
-from ops.ecris.drivers.scpi_driver import SCPIDriver
+import pyvisa
 from rich import print
 from rich.progress import track
 
 from ops.ecris.devices.ammeter import Ammeter
 from ops.ecris.drivers.keithley import Keithley
+from ops.ecris.drivers.scpi_driver import SCPIDriver
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 _log = logging.getLogger("ops")

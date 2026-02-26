@@ -1,11 +1,10 @@
-from unittest.mock import MagicMock, patch, create_autospec
 from dataclasses import dataclass
+from unittest.mock import create_autospec
 
-import numpy as np
 import pytest
 
 from ops.ecris.devices.motor_controller_specification import Axis
-from ops.ecris.legacy.emittance_scan import Variables, Motor, Read_and_Analyze
+from ops.ecris.legacy.emittance_scan import Motor, Read_and_Analyze, Variables
 
 MODULE = "ops.ecris.legacy.emittance_scan."
 

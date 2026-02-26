@@ -7,6 +7,13 @@ _log = getLogger(__name__)
 
 
 class Keysight(SCPIDriver):
+    """
+    Driver for Keysight B2900A series source measure units (SMUs).
+
+    This class extends SCPIDriver with specific handshake and setup routines
+    tailored for Keysight instruments.
+    """
+
     def __init__(
         self,
         sample_frequency_hz: float,

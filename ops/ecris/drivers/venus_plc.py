@@ -1,11 +1,11 @@
 import asyncio
-from logging import getLogger
-from typing import Any, Dict, List, Tuple
-from enum import Enum, auto
 import random
+from enum import Enum, auto
+from logging import getLogger
+from typing import Dict, List, Tuple
 
-from ops.ecris.drivers.device_data import DeviceData
 from ops.ecris.drivers import DataSource
+from ops.ecris.drivers.device_data import DeviceData
 
 _log = getLogger(__name__)
 

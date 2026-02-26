@@ -1,10 +1,11 @@
 import asyncio
+from enum import Enum, StrEnum, auto
 from logging import getLogger
-from typing import Set, List, Tuple, Any
-from enum import Enum, auto, StrEnum
 from time import perf_counter
+from typing import List, Set, Tuple
 
 import numpy as np
+
 from .base import SessionDriver
 from .telnet_driver import TelnetDriver
 from .visa_driver import VISADriver
@@ -13,12 +14,27 @@ _log = getLogger(__name__)
 
 
 class SCPIDriver(SessionDriver):
+    """
+    Base driver for SCPI-compatible instruments.
+
+    This class provides common functionality for instruments that communicate using
+    Standard Commands for Programmable Instruments (SCPI). It can use either a Telnet
+    or VISA backend for communication.
+    """
+
     class DataKeys(Enum):
         CURRENT = auto()
         VOLTAGE = auto()
         NPLC_SETTING = auto()
 
     class Commands(StrEnum):
+        """
+        Enumeration of standard SCPI commands used by the driver.
+
+        These commands cover common instrument operations like measuring current,
+        voltage, setting NPLC, resetting the device, and reading buffers.
+        """
+
         MEASURE_CURRENT = "meas:curr?"
         MEASURE_VOLTAGE = "meas:volt?"
         RESET = "*rst"
@@ -93,7 +109,7 @@ class SCPIDriver(SessionDriver):
     async def connect(self) -> None:
         _log.debug(f"Connecting to {self.id} at {self._host}...")
         await self._backend.connect()
-        # Handshake and setup are done by the transport's connect, but we might want 
+        # Handshake and setup are done by the transport's connect, but we might want
         # to ensure they are called on this object if not already called.
         # Actually TelnetDriver.connect calls self._handshake() and self._setup().
         # Since self._backend is a TelnetDriver/VISADriver, it calls its own handshake/setup.
@@ -131,24 +147,35 @@ class SCPIDriver(SessionDriver):
         await self._write(command)
 
     async def send_command(self, command: str) -> List[str] | str | None:
+        """
+        Sends a command to the device and waits for a response.
+
+        Args:
+            command (str): The command string to send to the device.
+
+        Returns:
+            List[str] | str | None: The response from the device. Returns a single string
+                if one line is received, a list of strings if multiple lines are received,
+                or None if no response is returned.
+        """
         await self._write(command)
         if isinstance(self._backend, VISADriver):
-            # For VISA, we can use _query or just read. 
+            # For VISA, we can use _query or just read.
             # If we already wrote, we should read.
             raw_response = await self._backend._read_until()
         else:
             terminator = self._prompt if self._prompt is not None else "\n"
             raw_response = await self._read_until(terminator)
-        
+
         if "\n" in raw_response:
-            response = [l.strip() for l in raw_response.split("\n")]
+            response = [line.strip() for line in raw_response.split("\n")]
         else:
             response = [raw_response.strip()]
 
         if self._prompt is not None:
-            response = [l for l in response if l != self._prompt]
+            response = [line for line in response if line != self._prompt]
         if self.command_echo is not None:
-            response = [l for l in response if l != command]
+            response = [line for line in response if line != command]
 
         if len(response) == 1:
             return response[0]
@@ -236,6 +263,19 @@ class SCPIDriver(SessionDriver):
             raise ConnectionAbortedError(f"Connection to {self.id} timed out.")
 
     async def read_data(self, data_key: DataKeys) -> float:
+        """
+        Reads a single data point from the device based on the provided key.
+
+        Args:
+            data_key (DataKeys): The key indicating which data to read (e.g., CURRENT, VOLTAGE).
+
+        Returns:
+            float: The measured value from the device.
+
+        Raises:
+            KeyError: If the read operation for the specified data_key is not implemented.
+            ConnectionAbortedError: If a timeout occurs while waiting for a valid response.
+        """
         match data_key:
             case SCPIDriver.DataKeys.CURRENT:
                 command = SCPIDriver.Commands.MEASURE_CURRENT
@@ -262,7 +302,9 @@ class SCPIDriver(SessionDriver):
                                 return float(response)
                             elif isinstance(response, list) and len(response) > 0:
                                 return float(response[0])
-                            _log.debug(f"Error in current measurement, non-float response: {response!r}")
+                            _log.debug(
+                                f"Error in current measurement, non-float response: {response!r}"
+                            )
                         except (ValueError, TypeError):
                             _log.debug(
                                 f"Error in current measurement, non-float response: {response!r}"

@@ -3,6 +3,7 @@ from logging import getLogger
 from typing import Any
 
 import pyvisa
+
 from .base import SessionDriver
 
 _log = getLogger(__name__)
@@ -69,14 +70,14 @@ class VISADriver(SessionDriver):
     async def _write(self, command: str) -> None:
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot write.")
-        
+
         _log.debug(f"Writing VISA command: {command!r}")
         await asyncio.to_thread(self._instrument.write, command)
 
     async def _read_until(self, separator: str = "\n") -> str:
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot read.")
-        
+
         # VISA normally reads until the terminator configured on the instrument.
         # We ignore the separator for now and just use the instrument's default read.
         response = await asyncio.to_thread(self._instrument.read)
@@ -86,7 +87,7 @@ class VISADriver(SessionDriver):
     async def _query(self, command: str) -> str:
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot query.")
-        
+
         _log.debug(f"Querying VISA command: {command!r}")
         response = await asyncio.to_thread(self._instrument.query, command)
         _log.debug(f"VISA query response: {response!r}")
@@ -95,7 +96,7 @@ class VISADriver(SessionDriver):
     async def query_ascii_values(self, command: str) -> list[float]:
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot query.")
-        
+
         _log.debug(f"Querying ASCII values VISA command: {command!r}")
         response = await asyncio.to_thread(self._instrument.query_ascii_values, command)
         _log.debug(f"VISA query_ascii_values response: {response!r}")

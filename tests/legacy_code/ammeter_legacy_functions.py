@@ -1,6 +1,8 @@
 import time
-import numpy as np
 from typing import List
+
+import numpy as np
+
 
 class Telnet:
     def __init__(ip, port, timeout):
@@ -57,7 +59,7 @@ def setupSystem(verbose=0):
     connection = Telnet(IP,port,timeout = 3)
     output = connection.read_until(b'\n')
     if verbose:   print('connected.  Output: ',output,'\nResetting system')
-    
+
     # Reset System
     sendCommand(connection,"*rst")
     if verbose:   print('reset')
@@ -70,8 +72,8 @@ def setupSystem(verbose=0):
     sendCommand(connection,':sens:curr:nplc:auto off')
 
     # Set integration time in terms of wall frequency: MeasTime*^60Hz
-    nplc = 1./measurementFrequency*60.0   
-    sendCommand(connection,':sens:curr:nplc '+str(nplc))   
+    nplc = 1./measurementFrequency*60.0
+    sendCommand(connection,':sens:curr:nplc '+str(nplc))
 
     # turn on input switch
     sendCommand(connection,':inp on')
@@ -81,5 +83,5 @@ def setupSystem(verbose=0):
 def datasheet(tst_str):
     readvars = venus.read_vars()
     with open(directory+'/dsht_'+tst_str,'w') as f:
-        for i in range(len(readvars)):  
+        for i in range(len(readvars)):
             f.write("%4i %.5e %s\n"%(i,venus.read([readvars[i]]),readvars[i]))

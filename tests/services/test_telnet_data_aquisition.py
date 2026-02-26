@@ -1,10 +1,10 @@
 # in: tests/services/test_telnet_acquisition.py
 
 import asyncio
-import threading
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
 from ops.ecris.drivers.measurement import Measurement
 from ops.ecris.services.base_acquisition import TelnetDataAcquisitionService
 
@@ -42,7 +42,7 @@ async def test_start_connects_device_and_starts_producer_thread(mock_device):
 
     thread_instance = mock_thread.return_value
     thread_instance.start.assert_called_once()
-    
+
     assert service._is_running is True
 
 @pytest.mark.asyncio
@@ -52,7 +52,7 @@ async def test_stop_disconnects_device_when_running(mock_device):
     when the service is running.
     """
     service = ConcreteAcquisitionService(device=mock_device)
-    
+
     service._is_running = True
     mock_device.is_connected = True
 

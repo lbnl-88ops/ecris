@@ -1,6 +1,7 @@
+import argparse
 import asyncio
 import logging
-import argparse
+
 import telnetlib3
 
 logging.basicConfig(
@@ -58,7 +59,7 @@ async def probe_ammeter_telnet3(host: str, port: int):
     except asyncio.TimeoutError:
         _log.error(f"Connection timed out. Could not connect to {host}:{port}.")
     except ConnectionRefusedError:
-        _log.error(f"Connection refused. Is the device on and the IP/port correct?")
+        _log.error("Connection refused. Is the device on and the IP/port correct?")
     except Exception as e:
         _log.error(f"An unexpected error occurred: {e}", exc_info=True)
 

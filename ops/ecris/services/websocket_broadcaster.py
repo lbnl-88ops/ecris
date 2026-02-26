@@ -2,10 +2,10 @@ import asyncio
 import json
 import logging
 from dataclasses import asdict, is_dataclass
-from typing import Set, Any
 from ipaddress import IPv4Address, IPv6Address, ip_address
+from typing import Any, Set
 
-from websockets.asyncio.server import serve, ServerConnection, Server
+from websockets.asyncio.server import Server, ServerConnection, serve
 
 _log = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class WebSocketBroadcaster:
     @property
     def port(self) -> int:
         return self._port
-    
+
     @property
     def _host(self) -> str:
         return f'{self._ip}:{self._port}'
@@ -46,7 +46,7 @@ class WebSocketBroadcaster:
         if self._server:
             _log.warning("Server is already running.")
             return
-        
+
         _log.info(f"Starting WebSocket broadcaster on ws://{self._host}")
         self._server = await serve(self._connection_handler, str(self._ip), self._port)
 
@@ -54,7 +54,7 @@ class WebSocketBroadcaster:
         """Stops the WebSocket server gracefully."""
         if not self._server:
             return
-        
+
         _log.info("Stopping WebSocket broadcaster...")
         self._server.close()
         await self._server.wait_closed()
@@ -73,7 +73,7 @@ class WebSocketBroadcaster:
             payload = asdict(message_data)
         else:
             payload = message_data
-            
+
         json_message = json.dumps(payload)
 
         tasks = [client.send(json_message) for client in self._connected_clients]

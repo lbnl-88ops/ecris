@@ -1,4 +1,3 @@
-from typing import Callable
 
 from .power_supply import VoltageSource, Voltmeter
 

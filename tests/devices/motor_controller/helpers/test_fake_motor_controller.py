@@ -1,5 +1,6 @@
+from ops.ecris.devices.motor_controller_specification import Axis, Commands
+
 from .fake_motor_controller import FakeMotorController
-from ops.ecris.devices.motor_controller_specification import Commands, Axis
 
 
 def test_fake_axis_check_returns_correct_values():

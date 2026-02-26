@@ -1,31 +1,27 @@
 # In: dev_tools/manual_scan.py
+import argparse
 import asyncio
 import logging
-import argparse
+
 import numpy as np
-import time
 
-from ops.ecris.drivers.labjack import LabJack
-from ops.ecris.drivers.telnet_driver import TelnetDriver
-from ops.ecris.drivers.keithley import Keithley
-from ops.ecris.drivers.venus_plc import VenusPLC, VENUSController
-
-from ops.ecris.devices.motor_controller_specification import Axis
 from ops.ecris.devices import (
-    MotorController,
     BiasedAmmeter,
-    Voltmeter,
     BiasedVoltageSource,
     DeflectionPlateController,
+    MotorController,
+    Voltmeter,
 )
 from ops.ecris.devices.biases import POSITIVE_VALUES_ONLY
 from ops.ecris.devices.deflection_plate_controller import (
     LABJACK_DEFLECTION_PLATE_BIAS,
 )
-
+from ops.ecris.devices.motor_controller_specification import Axis
+from ops.ecris.drivers.keithley import Keithley
+from ops.ecris.drivers.labjack import LabJack
+from ops.ecris.drivers.venus_plc import VENUSController, VenusPLC
 from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
 from ops.ecris.operations.emittance_scan.save_scan import save_emittance_scan
-
 
 # Set up basic logging to see the output from our scan classes
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

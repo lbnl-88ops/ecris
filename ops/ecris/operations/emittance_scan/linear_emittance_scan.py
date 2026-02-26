@@ -2,12 +2,14 @@ import asyncio
 import time
 from abc import ABC
 from logging import getLogger
+
 import numpy as np
 
-from .parameters import LinearScanParameters
-from ops.ecris.devices.motor_controller import MotorController
 from ops.ecris.devices.ammeter import Ammeter
 from ops.ecris.devices.deflection_plate_controller import DeflectionPlateController
+from ops.ecris.devices.motor_controller import MotorController
+
+from .parameters import LinearScanParameters
 
 _log = getLogger(__name__)
 

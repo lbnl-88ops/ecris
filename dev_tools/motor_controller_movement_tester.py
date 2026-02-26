@@ -1,9 +1,8 @@
-from argparse import ArgumentParser
 import asyncio
 import logging
-from typing import Any
+from argparse import ArgumentParser
 
-from ops.ecris.devices.motor_controller import MotorController, Axis, DeviceMalfunctionError
+from ops.ecris.devices.motor_controller import Axis, DeviceMalfunctionError, MotorController
 
 _log = logging.getLogger("ops")
 

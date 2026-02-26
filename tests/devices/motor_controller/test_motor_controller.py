@@ -1,19 +1,19 @@
-from unittest.mock import MagicMock, mock_open, patch, AsyncMock, call
-import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from ops.ecris.devices import DeviceMalfunctionError
 from ops.ecris.devices.motor_controller import MotorController
 from ops.ecris.devices.motor_controller_specification import (
-    Axis,
-    Commands,
-    PERPENDICULAR_AXIS,
-    Bit,
     MID_POINT_OFFSETS,
+    PERPENDICULAR_AXIS,
+    Axis,
+    Bit,
+    Commands,
 )
-from tests.devices.motor_controller.helpers import set_up_test, MoveSequences, FakeState
-from .helpers import FakeMotorController
+from tests.devices.motor_controller.helpers import FakeState, MoveSequences, set_up_test
 
+from .helpers import FakeMotorController
 
 ALL_AXES = [Axis.VenusX, Axis.VenusY, Axis.AcerX, Axis.AcerY]
 
