@@ -14,10 +14,13 @@ class Keithley(SCPIDriver):
         sample_frequency_hz: float,
         ip: str | None = None,
         port: int | None = None,
-        prompt=None,
-        id=ID,
+        resource_name: str | None = None,
+        prompt: str | None = None,
+        id: str = ID,
     ):
-        super().__init__(sample_frequency_hz, ip, port, prompt, id, command_echo=False)
+        super().__init__(
+            sample_frequency_hz, ip, port, resource_name, prompt, id, command_echo=False
+        )
 
     async def _handshake(self) -> None:
         await self.send_silent_command(SCPIDriver.Commands.SET_LANG)

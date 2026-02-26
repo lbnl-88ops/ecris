@@ -1,6 +1,7 @@
 import asyncio
 from logging import getLogger
 from ipaddress import IPv6Address, ip_address, IPv4Address
+from typing import Any
 from telnetlib3 import open_connection, TelnetReader, TelnetWriter
 
 from .base import SessionDriver
@@ -61,6 +62,12 @@ class TelnetDriver(SessionDriver):
     @property
     def _host(self) -> str:
         return f"{self._ip}:{self._port}"
+
+    async def read_data(self, data_key: Any) -> float:
+        raise NotImplementedError("Subclasses must implement read_data")
+
+    async def write_data(self, data_key: Any, value: float) -> None:
+        raise NotImplementedError("Subclasses must implement write_data")
 
     async def connect(self) -> None:
         async with self._connection_lock:

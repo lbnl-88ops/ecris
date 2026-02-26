@@ -7,6 +7,7 @@ import time
 
 from ops.ecris.drivers.labjack import LabJack
 from ops.ecris.drivers.telnet_driver import TelnetDriver
+from ops.ecris.drivers.keithley import Keithley
 from ops.ecris.drivers.venus_plc import VenusPLC, VENUSController
 
 from ops.ecris.devices.motor_controller_specification import Axis
@@ -40,11 +41,14 @@ async def main(args):
     labjack_driver = LabJack()
     motor_driver = MotorController(ip="10.10.100.60", port=5024)
     venus_plc_driver = VenusPLC(VENUSController(read_only=True))
+    keithley_driver = Keithley(
+        sample_frequency_hz=60, resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR"
+    )
 
     # Devices
     scanner_ammeter = BiasedAmmeter(
-        connection=labjack_driver,
-        read_key=LabJack.DataKeys.AIN0,
+        connection=keithley_driver,
+        read_key=Keithley.DataKeys.CURRENT,
         bias_function=POSITIVE_VALUES_ONLY,
     )
 
@@ -113,6 +117,7 @@ async def main(args):
 
     _log.info("User confirmed. Starting scan...")
     try:
+        await keithley_driver.connect()
         results = await scan_operation.run()
         _log.info("Scan completed successfully.")
 
@@ -124,9 +129,8 @@ async def main(args):
             _log.info("Scan results (shape {}):".format(results.shape))
             print(results)
 
-    except Exception as e:
-        _log.error(f"An error occurred during the scan: {e}", exc_info=True)
-
+    finally:
+        await keithley_driver.disconnect()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run a manual emittance scan.")

@@ -1,17 +1,18 @@
 import asyncio
 from logging import getLogger
-from os import stat
-from typing import Set, List, Tuple
+from typing import Set, List, Tuple, Any
 from enum import Enum, auto, StrEnum
 from time import perf_counter
 
-from .telnet_driver import TelnetDriver
 import numpy as np
+from .base import SessionDriver
+from .telnet_driver import TelnetDriver
+from .visa_driver import VISADriver
 
 _log = getLogger(__name__)
 
 
-class SCPIDriver(TelnetDriver):
+class SCPIDriver(SessionDriver):
     class DataKeys(Enum):
         CURRENT = auto()
         VOLTAGE = auto()
@@ -49,10 +50,12 @@ class SCPIDriver(TelnetDriver):
         def set_range(value_to_measure: float):
             return f":sens:curr:rang {value_to_measure:.2e}"
 
-        def get_trace_data(start, end, buffer_name):
+        @staticmethod
+        def get_trace_data(start: int, end: int, buffer_name: str) -> str:
             return f':trace:data? {start}, {end}, "{buffer_name}", READ'
 
-        def get_trace_time(start, end, buffer_name):
+        @staticmethod
+        def get_trace_time(start: int, end: int, buffer_name: str) -> str:
             return f':trace:data? {start}, {end}, "{buffer_name}", TST'
 
     def __init__(
@@ -60,20 +63,58 @@ class SCPIDriver(TelnetDriver):
         sample_frequency_hz: float,
         ip: str | None = None,
         port: int | None = None,
+        resource_name: str | None = None,
         prompt: str | None = None,
         id: str = "SCPI Device",
         command_echo: bool = False,
     ):
-        super().__init__(id, ip, port, prompt)
-
-        # if not 1 <= read_frequency_per_min <= 2000:
-        #     raise ValueError(
-        #         f"Bad value of read frequency {read_frequency_per_min} (must be 1-2000)"
-        #     )
-
-        self.nplc_setting = 6000 / sample_frequency_hz
         self.id = id
         self.command_echo = command_echo
+        self.nplc_setting = 6000 / sample_frequency_hz
+        self._prompt = prompt
+
+        if resource_name:
+            self._backend = VISADriver(resource_name, id=id)
+        else:
+            self._backend = TelnetDriver(id=id, ip=ip, port=port, prompt=prompt)
+
+    @property
+    def _host(self) -> str:
+        if isinstance(self._backend, VISADriver):
+            return self._backend.resource_name
+        elif isinstance(self._backend, TelnetDriver):
+            return self._backend._host
+        return "Unknown"
+
+    @property
+    def is_connected(self) -> bool:
+        return self._backend.is_connected
+
+    async def connect(self) -> None:
+        _log.debug(f"Connecting to {self.id} at {self._host}...")
+        await self._backend.connect()
+        # Handshake and setup are done by the transport's connect, but we might want 
+        # to ensure they are called on this object if not already called.
+        # Actually TelnetDriver.connect calls self._handshake() and self._setup().
+        # Since self._backend is a TelnetDriver/VISADriver, it calls its own handshake/setup.
+        # We still need to call our device-specific handshake and setup.
+        await self._handshake()
+        await self._setup()
+
+    async def disconnect(self) -> None:
+        await self._backend.disconnect()
+
+    async def _handshake(self) -> None:
+        pass
+
+    async def _setup(self) -> None:
+        pass
+
+    async def _write(self, command: str) -> None:
+        await self._backend._write(command)
+
+    async def _read_until(self, separator: str = "\n") -> str:
+        return await self._backend._read_until(separator)
 
     @property
     def readable_keys(self) -> Set[DataKeys]:
@@ -91,8 +132,14 @@ class SCPIDriver(TelnetDriver):
 
     async def send_command(self, command: str) -> List[str] | str | None:
         await self._write(command)
-        terminator = self._prompt if self._prompt is not None else "\n"
-        raw_response = await self._read_until(terminator)
+        if isinstance(self._backend, VISADriver):
+            # For VISA, we can use _query or just read. 
+            # If we already wrote, we should read.
+            raw_response = await self._backend._read_until()
+        else:
+            terminator = self._prompt if self._prompt is not None else "\n"
+            raw_response = await self._read_until(terminator)
+        
         if "\n" in raw_response:
             response = [l.strip() for l in raw_response.split("\n")]
         else:
@@ -105,6 +152,8 @@ class SCPIDriver(TelnetDriver):
 
         if len(response) == 1:
             return response[0]
+        elif len(response) == 0:
+            return None
         return response
 
     async def read_loop(self, n_points: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -130,7 +179,7 @@ class SCPIDriver(TelnetDriver):
         times = [perf_counter()]
         match data_key:
             case SCPIDriver.DataKeys.CURRENT:
-                aperature_command = SCPIDriver.Commands.CURRENT_GET_APERATURE
+                pass
             case _:
                 raise KeyError(f"Read operation for data_key {data_key.name} not implemented.")
         try:
@@ -175,11 +224,11 @@ class SCPIDriver(TelnetDriver):
                         assert isinstance(data_response, str)
                         assert isinstance(time_response, str)
                         data = np.array([float(v) for v in data_response.split(",")])
-                        time = np.array([str(v) for v in data_response.split(",")])
+                        time = np.array([str(v) for v in time_response.split(",")])
                         return data, time
-                    except ValueError or AssertionError as exc:
+                    except (ValueError, AssertionError) as exc:
                         _log.error(f"Error in current measurement, non-float response: {exc}")
-                        break
+                        raise RuntimeError(f"Measurement failed: {exc}") from exc
         except TimeoutError:
             _log.error(
                 f"Timeout occurred while waiting for a valid numeric response from {self.id}."
@@ -197,15 +246,27 @@ class SCPIDriver(TelnetDriver):
         try:
             async with asyncio.timeout(10.0):  # Overall timeout for the read operation
                 while True:
-                    _log.debug("Reading current")
-                    response = await self.send_command(command)
-                    _log.debug(f"Raw response {response!r}")
-                    try:
-                        return float(response)
-                    except ValueError or AssertionError:
-                        _log.debug(
-                            f"Error in current measurement, non-float response: {response!r}"
-                        )
+                    _log.debug(f"Reading {data_key.name}")
+                    if isinstance(self._backend, VISADriver):
+                        try:
+                            values = await self._backend.query_ascii_values(command)
+                            if values:
+                                return values[0]
+                        except Exception as exc:
+                            _log.debug(f"Error in VISA measurement: {exc}")
+                    else:
+                        response = await self.send_command(command)
+                        _log.debug(f"Raw response {response!r}")
+                        try:
+                            if isinstance(response, str):
+                                return float(response)
+                            elif isinstance(response, list) and len(response) > 0:
+                                return float(response[0])
+                            _log.debug(f"Error in current measurement, non-float response: {response!r}")
+                        except (ValueError, TypeError):
+                            _log.debug(
+                                f"Error in current measurement, non-float response: {response!r}"
+                            )
         except TimeoutError:
             _log.error(
                 f"Timeout occurred while waiting for a valid numeric response from {self.id}."
@@ -214,10 +275,6 @@ class SCPIDriver(TelnetDriver):
 
     async def write_data(self, data_key: DataKeys, value: float) -> None:
         raise KeyError(f"Write operation for data_key {data_key.name} not implemented.")
-
-    async def connect(self) -> None:
-        _log.debug(f"Connecting to {self.id} at {self._host}...")
-        await super().connect()
 
     async def reset(self) -> None:
         _log.debug(f"Resetting {self.id} at {self._host}...")

@@ -9,16 +9,19 @@ _log = getLogger(__name__)
 class Keysight(SCPIDriver):
     def __init__(
         self,
-        sample_freqnecy_hz: float,
+        sample_frequency_hz: float,
         ip: str | None = None,
         port: int | None = None,
-        prompt: str = "B2900A>",
+        resource_name: str | None = None,
+        prompt: str | None = "B2900A>",
         id: str = "KeySight B2900A",
     ):
-        super().__init__(sample_frequency_hz, ip, port, prompt, id, command_echo=True)
+        super().__init__(
+            sample_frequency_hz, ip, port, resource_name, prompt, id, command_echo=True
+        )
 
     async def _handshake(self) -> None:
-        response = await self._read_until(self._prompt)
+        response = await self._read_until(self._prompt if self._prompt else "\n")
         _log.info(f"Successfully connected: {response}.")
         return
 

@@ -13,7 +13,7 @@ def mock_keithley_connection():
         mock_writer.is_closing = MagicMock(return_value=False)
         mock_open_conn.return_value = (mock_reader, mock_writer)
 
-        keithley = Keithley(read_frequency_per_min=60, ip="127.0.0.1", port=9999)
+        keithley = Keithley(sample_frequency_hz=60, ip="127.0.0.1", port=9999)
 
         yield keithley, mock_reader, mock_writer, mock_open_conn
 
@@ -21,7 +21,7 @@ def mock_keithley_connection():
 @pytest.mark.asyncio
 async def test_connect_sends_correct_commands(mock_keithley_connection):
     keithley, mock_reader, mock_writer, mock_open_conn = mock_keithley_connection
-    expected_nplc = 1.0
+    expected_nplc = 100.0
     handshake_commands = [
         "*lang scpi",
         ":trace:clear",
@@ -35,9 +35,8 @@ async def test_connect_sends_correct_commands(mock_keithley_connection):
     setup_commands = [
         ':sens:func "curr"',
         ":sens:curr:rang:auto on",
-        ":sens:curr:nplc:auto off",
+        ":sens:curr:delay:auto off",
         f":sens:curr:nplc {expected_nplc}",
-        ":inp on",
     ]
     read_until_effects = [v.encode("ascii") for v in handshake_return_values]
 
@@ -45,7 +44,8 @@ async def test_connect_sends_correct_commands(mock_keithley_connection):
 
     with patch("asyncio.sleep") as mock_sleep:
         await keithley.connect()
-        mock_sleep.assert_awaited_once_with(2.0)
+        assert mock_sleep.await_count == 2
+        mock_sleep.assert_has_awaits([call(2.0), call(5.0)])
 
     mock_open_conn.assert_awaited_once_with("127.0.0.1", 9999, encoding=False)
     all_commands = handshake_commands + reset_command + setup_commands
@@ -62,8 +62,8 @@ async def test_connect_sends_correct_commands(mock_keithley_connection):
 @pytest.mark.asyncio
 async def test_read_data_sends_command_and_parses_response(mock_keithley_connection):
     keithley, mock_reader, mock_writer, _ = mock_keithley_connection
-    keithley._reader = mock_reader
-    keithley._writer = mock_writer
+    keithley._backend._reader = mock_reader
+    keithley._backend._writer = mock_writer
     command = "meas:curr?"
 
     mock_reader.readuntil.return_value = "1.2345E-05\r\n".encode("ascii")
