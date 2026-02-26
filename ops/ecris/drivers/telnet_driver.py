@@ -124,7 +124,7 @@ class TelnetDriver(SessionDriver):
         try:
             _log.debug(f"Awaiting read to terminator {separator.encode(self.encoding)!r}")
             raw_bytes = await self._reader.readuntil(separator.encode(self.encoding))
-            _log.debug(f"Raw response {raw_bytes!r}")
+            _log.debug(f"Raw response {raw_bytes[:20]!r}" + "..." if len(raw_bytes) > 20 else "")
             response = raw_bytes.decode(self.encoding)
             if self._prompt is not None:
                 response = response.removeprefix(self._prompt)

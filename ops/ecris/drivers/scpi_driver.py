@@ -1,7 +1,9 @@
 import asyncio
 from logging import getLogger
+from os import stat
 from typing import Set, List, Tuple
 from enum import Enum, auto, StrEnum
+from time import perf_counter
 
 from .telnet_driver import TelnetDriver
 import numpy as np
@@ -25,20 +27,33 @@ class SCPIDriver(TelnetDriver):
         CURRENT_NPLC_AUTO_OFF = ":sens:curr:nplc:auto off"
         CURRENT_SET_APERATURE = ":sens:curr:aper {}"
         CURRENT_GET_APERATURE = ":sens:curr:aper?"
+        CURRENT_MIN_RANGE = ":sens:curr:range min"
         SET_COUNT = ":sens:count {}"
         GET_COUNT = ":sens:count?"
+        CURRENT_DELAY_DISABLE = ":sens:curr:delay:auto off"
         INPUT_ON = ":inp on"
         TEST = "*tst?"  # returns 0, generally for handshake
         IDENTITY = "*idn?"  # Returns identity
         CLEAR_BUFFER = ":trace:clear"
         SET_LANG = "*lang scpi"
         READ = ":read?"
+        READ_DIGITIZE = ":read:dig?"
+        SIMPLE_LOOP = 'TRIG:LOAD "SimpleLoop", {}'
+        LOOP_INIT = "INIT"
+        WAIT = "*WAI"
+        LOOP_EXEC = "INIT; *WAI"
+        AUTOZERO_OFF = ":sens:curr:azer off"
+        AUTOZERO_ONCE = ":sens:azer:once"
+
+        @staticmethod
+        def set_range(value_to_measure: float):
+            return f":sens:curr:rang {value_to_measure:.2e}"
 
         def get_trace_data(start, end, buffer_name):
-            return f':trace:data? {start}, {end}, "{buffer_name}"'
+            return f':trace:data? {start}, {end}, "{buffer_name}", READ'
 
         def get_trace_time(start, end, buffer_name):
-            return f':trace:data? {start}, {end}, "{buffer_name}", TIME'
+            return f':trace:data? {start}, {end}, "{buffer_name}", TST'
 
     def __init__(
         self,
@@ -78,7 +93,10 @@ class SCPIDriver(TelnetDriver):
         await self._write(command)
         terminator = self._prompt if self._prompt is not None else "\n"
         raw_response = await self._read_until(terminator)
-        response = [l.strip() for l in raw_response.split()]
+        if "\n" in raw_response:
+            response = [l.strip() for l in raw_response.split("\n")]
+        else:
+            response = [raw_response.strip()]
 
         if self._prompt is not None:
             response = [l for l in response if l != self._prompt]
@@ -89,39 +107,79 @@ class SCPIDriver(TelnetDriver):
             return response[0]
         return response
 
+    async def read_loop(self, n_points: int) -> Tuple[np.ndarray, np.ndarray]:
+        await self.send_silent_command(SCPIDriver.Commands.LOOP_INIT)
+        await self.send_silent_command(SCPIDriver.Commands.WAIT)
+        data_response = await self.send_command(
+            SCPIDriver.Commands.get_trace_data(1, n_points, "defbuffer1")
+        )
+        time_response = await self.send_command(
+            SCPIDriver.Commands.get_trace_time(1, n_points, "defbuffer1")
+        )
+        _log.debug("Clearing buffer")
+        await self.send_silent_command(SCPIDriver.Commands.CLEAR_BUFFER)
+        assert isinstance(data_response, str)
+        assert isinstance(time_response, str)
+        data = np.array([float(v) for v in data_response.split(",")])
+        time = np.array([str(v) for v in time_response.split(",")])
+        return data, time
+
     async def read_data_points(
         self, data_key: DataKeys, n_points: int, timing: float
     ) -> Tuple[np.ndarray, np.ndarray]:
+        times = [perf_counter()]
         match data_key:
             case SCPIDriver.DataKeys.CURRENT:
                 aperature_command = SCPIDriver.Commands.CURRENT_GET_APERATURE
             case _:
                 raise KeyError(f"Read operation for data_key {data_key.name} not implemented.")
         try:
-            async with asyncio.timeout(2.0):  # Overall timeout for the read operation
+            total_time = n_points * timing + 60
+            async with asyncio.timeout(total_time):  # Overall timeout for the read operation
                 while True:
-                    await self.send_command(SCPIDriver.Commands.SET_COUNT.format(n_points))
-                    await self.send_command(
+                    times.append(perf_counter())
+                    _log.debug(f"Clearing buffer, {times[-1] - times[-2]}")
+                    await self.send_silent_command(SCPIDriver.Commands.CLEAR_BUFFER)
+                    # _log.debug("Setting count")
+                    # await self.send_silent_command(SCPIDriver.Commands.SET_COUNT.format(n_points))
+                    times.append(perf_counter())
+                    _log.debug(f"Setting aperature {times[-1] - times[-2]}")
+                    await self.send_silent_command(
                         SCPIDriver.Commands.CURRENT_SET_APERATURE.format(timing)
                     )
-                    await self.send_command(SCPIDriver.Commands.READ)
+                    times.append(perf_counter())
+                    _log.debug(f"Zeroing and setting range {times[-1] - times[-2]}")
+                    await self.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
+                    await self.send_silent_command(SCPIDriver.Commands.AUTOZERO_OFF)
+                    # await self.send_silent_command(SCPIDriver.Commands.CURRENT_MIN_RANGE)
+                    times.append(perf_counter())
+                    _log.debug(f"Reading data {times[-1] - times[-2]}")
+                    await self.send_silent_command(
+                        SCPIDriver.Commands.SIMPLE_LOOP.format(n_points)
+                    )
+                    await self.send_silent_command(SCPIDriver.Commands.LOOP_INIT)
+                    await self.send_silent_command(SCPIDriver.Commands.WAIT)
+                    times.append(perf_counter())
+                    _log.debug(f"Retrieving data {times[-1] - times[-2]}")
                     data_response = await self.send_command(
                         SCPIDriver.Commands.get_trace_data(1, n_points, "defbuffer1")
                     )
-
+                    times.append(perf_counter())
+                    _log.debug(f"Retrieving time {times[-1] - times[-2]}")
                     time_response = await self.send_command(
                         SCPIDriver.Commands.get_trace_time(1, n_points, "defbuffer1")
                     )
-                    await self.send_command(SCPIDriver.Commands.CLEAR_BUFFER)
-
+                    times.append(perf_counter())
+                    _log.debug(f"Clearing buffer {times[-1] - times[-2]}")
                     try:
-                        data = np.ndarray([float(v) for v in data_response.split(",")])
-                        time = np.ndarray([float(v) for v in time_response.split(",")])
+                        assert isinstance(data_response, str)
+                        assert isinstance(time_response, str)
+                        data = np.array([float(v) for v in data_response.split(",")])
+                        time = np.array([str(v) for v in data_response.split(",")])
                         return data, time
-                    except ValueError or AssertionError:
-                        _log.debug(
-                            f"Error in current measurement, non-float response: {data!r}, {time!r}"
-                        )
+                    except ValueError or AssertionError as exc:
+                        _log.error(f"Error in current measurement, non-float response: {exc}")
+                        break
         except TimeoutError:
             _log.error(
                 f"Timeout occurred while waiting for a valid numeric response from {self.id}."
@@ -137,7 +195,7 @@ class SCPIDriver(TelnetDriver):
             case _:
                 raise KeyError(f"Read operation for data_key {data_key.name} not implemented.")
         try:
-            async with asyncio.timeout(2.0):  # Overall timeout for the read operation
+            async with asyncio.timeout(10.0):  # Overall timeout for the read operation
                 while True:
                     _log.debug("Reading current")
                     response = await self.send_command(command)

@@ -40,10 +40,11 @@ class Keithley(SCPIDriver):
         setup_commands = [
             SCPIDriver.Commands.CURRENT_FUNCTION,
             SCPIDriver.Commands.CURRENT_AUTO_RANGE,
+            SCPIDriver.Commands.CURRENT_DELAY_DISABLE,
             SCPIDriver.Commands.SET_NPLC.format(self.nplc_setting),
         ]
         for command in setup_commands:
-            print("sending command {command}")
+            print(f"sending command {command}")
             await self.send_silent_command(command)
         await asyncio.sleep(5)
         _log.debug(f"Setup complete.")
