@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, MagicMock, call, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock, call
 
 from ops.ecris.drivers.keithley import Keithley
 
@@ -57,6 +58,50 @@ async def test_connect_sends_correct_commands(mock_keithley_connection):
     mock_reader.readuntil.assert_has_calls(expected_readuntil_calls)
     assert mock_writer.write.call_count == len(expected_write_calls)
     assert mock_reader.readuntil.call_count == len(read_until_effects)
+
+
+@pytest.mark.asyncio
+async def test_handshake_retry_on_tst_failure_success(mock_keithley_connection):
+    keithley, mock_reader, mock_writer, _ = mock_keithley_connection
+    keithley._backend._reader = mock_reader
+    keithley._backend._writer = mock_writer
+
+    # "1" initially, then "0" on retry, then "KEITHLEY..." for *idn?
+    handshake_return_values = ["1\r\n", "0\r\n", "KEITHLEY INSTRUMENTS\r\n"]
+    mock_reader.readuntil.side_effect = [v.encode("ascii") for v in handshake_return_values]
+
+    with patch.object(keithley, "send_silent_command", new_callable=AsyncMock) as mock_silent:
+        await keithley._handshake()
+
+    assert mock_writer.write.call_count == 3
+    mock_writer.write.assert_has_calls([call(b"*tst?\r\n"), call(b"\n\r\n"), call(b"*idn?\r\n")])
+
+
+@pytest.mark.asyncio
+async def test_handshake_retry_on_tst_failure_raises(mock_keithley_connection):
+    keithley, mock_reader, mock_writer, _ = mock_keithley_connection
+    keithley._backend._reader = mock_reader
+    keithley._backend._writer = mock_writer
+
+    # "1" initially, then "1" on retry
+    handshake_return_values = ["1\r\n", "1\r\n"]
+    mock_reader.readuntil.side_effect = [v.encode("ascii") for v in handshake_return_values]
+
+    with patch.object(keithley, "send_silent_command", new_callable=AsyncMock):
+        with pytest.raises(ConnectionError, match="Handshake failed, response: 1"):
+            await keithley._handshake()
+
+
+@pytest.mark.asyncio
+async def test_handshake_idn_list(mock_keithley_connection):
+    keithley, mock_reader, mock_writer, _ = mock_keithley_connection
+    keithley._backend._reader = mock_reader
+    keithley._backend._writer = mock_writer
+
+    with patch.object(keithley, "send_silent_command", new_callable=AsyncMock):
+        with patch.object(keithley, "send_command", new_callable=AsyncMock) as mock_send:
+            mock_send.side_effect = ["0", ["KEITHLEY", "MODEL", "DMM7512"]]
+            await keithley._handshake()
 
 
 @pytest.mark.asyncio
