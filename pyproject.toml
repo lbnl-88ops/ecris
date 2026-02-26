@@ -18,21 +18,20 @@ dependencies = [
     "labjack-ljm",
     "websockets",
     "h5py",
+    "pyvisa (>=1.16.1,<2.0.0)",
 ]
 
 [tool.poetry]
 version = "0.2.2"
 packages = [ { include = "ops/ecris" } ]
 
-[dependency-groups]
-dev = [
-    "rich",
-    "pytest",
-    "pytest-asyncio",
-    "pytest-cov",
-    "ruff",
-    "pyright",
-]
+[tool.poetry.group.dev.dependencies]
+rich = "*"
+pytest = "*"
+pytest-asyncio = "*"
+pytest-cov = "*"
+ruff = "*"
+pyright = "*"
 
 [tool.pytest.ini_options]
 pythonpath = [ 
