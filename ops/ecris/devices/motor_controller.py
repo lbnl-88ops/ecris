@@ -1,19 +1,18 @@
 import asyncio
-from enum import StrEnum, Enum, auto
 from logging import getLogger
-from typing import Any, List, Type, TypeVar, overload, Literal, get_origin, get_args
-import asyncio
+from typing import Any, List, Type, TypeVar, get_args, get_origin, overload
 
-from ops.ecris.utilities.decorators import with_lock_named
 from ops.ecris.drivers.telnet_driver import TelnetDriver
+from ops.ecris.utilities.decorators import with_lock_named
+
+from .exceptions import DeviceMalfunctionError
 from .motor_controller_specification import (
     MID_POINT_OFFSETS,
-    Commands,
-    Axis,
     PERPENDICULAR_AXIS,
+    Axis,
     Bit,
+    Commands,
 )
-from .exceptions import DeviceMalfunctionError
 
 _log = getLogger(__name__)
 
@@ -45,6 +44,7 @@ class MotorController(TelnetDriver):
     async def connect(self, wakeup_required=True) -> None:
         _log.debug(f"Connecting Motor Controller at {self._host}")
         await super().connect()
+        await self._setup()
 
     async def _clear_buffer(self):
         await self._read_until(self._prompt)

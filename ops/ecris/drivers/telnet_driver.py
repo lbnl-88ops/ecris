@@ -1,8 +1,9 @@
 import asyncio
+from ipaddress import IPv4Address, IPv6Address, ip_address
 from logging import getLogger
-from ipaddress import IPv6Address, ip_address, IPv4Address
 from typing import Any
-from telnetlib3 import open_connection, TelnetReader, TelnetWriter
+
+from telnetlib3 import TelnetReader, TelnetWriter, open_connection
 
 from .base import SessionDriver
 
@@ -10,6 +11,14 @@ _log = getLogger(__name__)
 
 
 class TelnetDriver(SessionDriver):
+    """
+    Driver for communicating with devices over Telnet.
+
+    This driver handles the underlying TCP connection, reading, and writing of data
+    using the Telnet protocol. It supports configurable prompts, encodings, and
+    command terminators.
+    """
+
     def __init__(
         self,
         id: str = "TelnetDevice",
@@ -86,9 +95,7 @@ class TelnetDriver(SessionDriver):
                 )
                 _log.debug("Connected, performing handshake...")
                 await self._handshake()
-                _log.debug("Handshake complete, performing setup...")
-                # TODO: Move this out of connect
-                await self._setup()
+                _log.debug("Handshake complete.")
                 # _log.debug(f"Awaiting initial response, expected prompt = {self._prompt}")
                 # response = await asyncio.wait_for(self._read_until(self._prompt), 1.0)
                 # _log.info(f"Successfully connected to {host}, response: {response}.")
@@ -121,9 +128,9 @@ class TelnetDriver(SessionDriver):
         encoded_command = (command + self._command_terminator).encode(self.encoding)
         _log.debug(f"Writing command {encoded_command!r}")
         self._writer.write(encoded_command)
-        _log.debug(f"Draining buffer")
+        _log.debug("Draining buffer")
         await self._writer.drain()
-        _log.debug(f"Buffer drained")
+        _log.debug("Buffer drained")
 
     async def _read_until(self, separator: str = "\n") -> str:
         if not self.is_connected:
