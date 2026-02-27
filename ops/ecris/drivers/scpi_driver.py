@@ -77,22 +77,53 @@ class SCPIDriver(SessionDriver):
     def __init__(
         self,
         sample_frequency_hz: float,
-        ip: str | None = None,
-        port: int | None = None,
-        resource_name: str | None = None,
-        prompt: str | None = None,
+        connection: SessionDriver,
         id: str = "SCPI Device",
         command_echo: bool = False,
     ):
         self.id = id
         self.command_echo = command_echo
         self.nplc_setting = 6000 / sample_frequency_hz
-        self._prompt = prompt
+        self._prompt = connection._prompt if isinstance(connection, TelnetDriver) else None
+        self._backend = connection
 
-        if resource_name:
-            self._backend = VISADriver(resource_name, id=id)
-        else:
-            self._backend = TelnetDriver(id=id, ip=ip, port=port, prompt=prompt)
+    @classmethod
+    def connect_at_ip(
+        cls,
+        ip: str,
+        port: int,
+        prompt: str | None = None,
+        id: str = "SCPI Device",
+        sample_frequency_hz: float = 60.0,
+        command_echo: bool = False,
+        **kwargs,
+    ):
+        telnet_driver = TelnetDriver(id=id, ip=ip, port=port, prompt=prompt)
+        return cls(
+            sample_frequency_hz=sample_frequency_hz,
+            connection=telnet_driver,
+            id=id,
+            command_echo=command_echo,
+            **kwargs,
+        )
+
+    @classmethod
+    def connect_at_usb(
+        cls,
+        resource_name: str,
+        id: str = "SCPI Device",
+        sample_frequency_hz: float = 60.0,
+        command_echo: bool = False,
+        **kwargs,
+    ):
+        visa_driver = VISADriver(resource_name, id=id)
+        return cls(
+            sample_frequency_hz=sample_frequency_hz,
+            connection=visa_driver,
+            id=id,
+            command_echo=command_echo,
+            **kwargs,
+        )
 
     @property
     def _host(self) -> str:

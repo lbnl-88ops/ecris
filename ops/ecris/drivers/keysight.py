@@ -1,9 +1,15 @@
 import asyncio
 from logging import getLogger
 
+from .base import SessionDriver
 from .scpi_driver import SCPIDriver
+from .telnet_driver import TelnetDriver
+from .visa_driver import VISADriver
 
 _log = getLogger(__name__)
+
+ID: str = "KeySight B2900A"
+DEFAULT_PROMPT: str = "B2900A>"
 
 
 class Keysight(SCPIDriver):
@@ -17,14 +23,53 @@ class Keysight(SCPIDriver):
     def __init__(
         self,
         sample_frequency_hz: float,
-        ip: str | None = None,
-        port: int | None = None,
-        resource_name: str | None = None,
-        prompt: str | None = "B2900A>",
-        id: str = "KeySight B2900A",
+        connection: SessionDriver,
+        id: str = ID,
+        command_echo: bool = True,
     ):
         super().__init__(
-            sample_frequency_hz, ip, port, resource_name, prompt, id, command_echo=True
+            sample_frequency_hz=sample_frequency_hz,
+            connection=connection,
+            id=id,
+            command_echo=command_echo,
+        )
+
+    @classmethod
+    def connect_at_ip(
+        cls,
+        ip: str,
+        port: int,
+        prompt: str | None = DEFAULT_PROMPT,
+        id: str = ID,
+        sample_frequency_hz: float = 60.0,
+        command_echo: bool = True,
+        **kwargs,
+    ):
+        telnet_driver = TelnetDriver(id=id, ip=ip, port=port, prompt=prompt)
+        return cls(
+            sample_frequency_hz=sample_frequency_hz,
+            connection=telnet_driver,
+            id=id,
+            command_echo=command_echo,
+            **kwargs,
+        )
+
+    @classmethod
+    def connect_at_usb(
+        cls,
+        resource_name: str,
+        id: str = ID,
+        sample_frequency_hz: float = 60.0,
+        command_echo: bool = True,
+        **kwargs,
+    ):
+        visa_driver = VISADriver(resource_name, id=id)
+        return cls(
+            sample_frequency_hz=sample_frequency_hz,
+            connection=visa_driver,
+            id=id,
+            command_echo=command_echo,
+            **kwargs,
         )
 
     async def _handshake(self) -> None:

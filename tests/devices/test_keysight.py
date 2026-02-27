@@ -16,7 +16,7 @@ def mock_keysight_connection():
         mock_writer.is_closing = MagicMock(return_value=False)
         mock_open_conn.return_value = (mock_reader, mock_writer)
 
-        keysight = Keysight(sample_frequency_hz=1.0, ip="127.0.0.1", port=9999)
+        keysight = Keysight.connect_at_ip(ip="127.0.0.1", port=9999, sample_frequency_hz=1.0)
 
         yield keysight, mock_reader, mock_writer, mock_open_conn
 

@@ -16,7 +16,9 @@ async def test_keithley_visa_connect():
         mock_instrument.query.side_effect = ["0", "KEITHLEY DMM7512"]
         mock_instrument.read.side_effect = ["0", "KEITHLEY DMM7512"]
 
-        keithley = Keithley(sample_frequency_hz=60, resource_name="USB0::0x05E6::0x7510::INSTR")
+        keithley = Keithley.connect_at_usb(
+            resource_name="USB0::0x05E6::0x7510::INSTR", sample_frequency_hz=60
+        )
 
         with patch("asyncio.sleep"):
             await keithley.connect()

@@ -1,7 +1,10 @@
 import asyncio
 from logging import getLogger
 
+from .base import SessionDriver
 from .scpi_driver import SCPIDriver
+from .telnet_driver import TelnetDriver
+from .visa_driver import VISADriver
 
 _log = getLogger(__name__)
 
@@ -19,14 +22,53 @@ class Keithley(SCPIDriver):
     def __init__(
         self,
         sample_frequency_hz: float,
-        ip: str | None = None,
-        port: int | None = None,
-        resource_name: str | None = None,
-        prompt: str | None = None,
+        connection: SessionDriver,
         id: str = ID,
+        command_echo: bool = False,
     ):
         super().__init__(
-            sample_frequency_hz, ip, port, resource_name, prompt, id, command_echo=False
+            sample_frequency_hz=sample_frequency_hz,
+            connection=connection,
+            id=id,
+            command_echo=command_echo,
+        )
+
+    @classmethod
+    def connect_at_ip(
+        cls,
+        ip: str,
+        port: int,
+        prompt: str | None = None,
+        id: str = ID,
+        sample_frequency_hz: float = 60.0,
+        command_echo: bool = False,
+        **kwargs,
+    ):
+        telnet_driver = TelnetDriver(id=id, ip=ip, port=port, prompt=prompt)
+        return cls(
+            sample_frequency_hz=sample_frequency_hz,
+            connection=telnet_driver,
+            id=id,
+            command_echo=command_echo,
+            **kwargs,
+        )
+
+    @classmethod
+    def connect_at_usb(
+        cls,
+        resource_name: str,
+        id: str = ID,
+        sample_frequency_hz: float = 60.0,
+        command_echo: bool = False,
+        **kwargs,
+    ):
+        visa_driver = VISADriver(resource_name, id=id)
+        return cls(
+            sample_frequency_hz=sample_frequency_hz,
+            connection=visa_driver,
+            id=id,
+            command_echo=command_echo,
+            **kwargs,
         )
 
     async def _handshake(self) -> None:

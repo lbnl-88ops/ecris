@@ -37,8 +37,8 @@ async def main(args):
     labjack_driver = LabJack()
     motor_driver = MotorController(ip="10.10.100.60", port=5024)
     venus_plc_driver = VenusPLC(VENUSController(read_only=True))
-    keithley_driver = Keithley(
-        sample_frequency_hz=60, resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR"
+    keithley_driver = Keithley.connect_at_usb(
+        resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", sample_frequency_hz=60
     )
 
     # Devices
@@ -127,6 +127,7 @@ async def main(args):
 
     finally:
         await keithley_driver.disconnect()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run a manual emittance scan.")
