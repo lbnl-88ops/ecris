@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 import pytest
 
 from ops.ecris.drivers.keithley import Keithley
+from ops.ecris.drivers.scpi_driver import SCPIDriver
 
 
 @pytest.fixture
@@ -102,6 +103,55 @@ async def test_handshake_idn_list(mock_keithley_connection):
         with patch.object(keithley, "send_command", new_callable=AsyncMock) as mock_send:
             mock_send.side_effect = ["0", ["KEITHLEY", "MODEL", "DMM7512"]]
             await keithley._handshake()
+
+
+@pytest.mark.asyncio
+async def test_connect_voltage_mode_sends_correct_commands():
+    with patch("ops.ecris.drivers.telnet_driver.open_connection") as mock_open_conn:
+        mock_reader = AsyncMock()
+        mock_writer = AsyncMock()
+        mock_writer.write = MagicMock()
+        mock_writer.is_closing = MagicMock(return_value=False)
+        mock_open_conn.return_value = (mock_reader, mock_writer)
+
+        keithley = Keithley.connect_at_ip(
+            ip="127.0.0.1",
+            port=9999,
+            aperture_time=0.0166,
+            mode=SCPIDriver.MeasurementMode.VOLTAGE,
+        )
+
+    expected_aperture = 0.0166
+    handshake_return_values = ["0\r\n", "KEITHLEY INSTRUMENTS,MODEL DMM7512,04684146,1.7.16a\r\n"]
+    mock_reader.readuntil.side_effect = [v.encode("ascii") for v in handshake_return_values]
+
+    with patch("ops.ecris.drivers.telnet_driver.open_connection") as mock_open_conn2:
+        mock_open_conn2.return_value = (mock_reader, mock_writer)
+        with patch("asyncio.sleep"):
+            await keithley.connect()
+
+    voltage_setup_commands = [
+        SCPIDriver.Commands.VOLTAGE_FUNCTION,
+        SCPIDriver.Commands.VOLTAGE_AUTO_RANGE,
+        SCPIDriver.Commands.VOLTAGE_DELAY_DISABLE,
+        SCPIDriver.Commands.VOLTAGE_SET_APERATURE.format(expected_aperture),
+    ]
+
+    written_commands = [
+        call_args[0][0].decode("ascii").strip() for call_args in mock_writer.write.call_args_list
+    ]
+
+    for cmd in voltage_setup_commands:
+        assert cmd in written_commands, f"Expected voltage command not sent: {cmd!r}"
+
+    current_setup_commands = [
+        SCPIDriver.Commands.CURRENT_FUNCTION,
+        SCPIDriver.Commands.CURRENT_AUTO_RANGE,
+        SCPIDriver.Commands.CURRENT_DELAY_DISABLE,
+        SCPIDriver.Commands.CURRENT_SET_APERATURE.format(expected_aperture),
+    ]
+    for cmd in current_setup_commands:
+        assert cmd not in written_commands, f"Unexpected current command was sent: {cmd!r}"
 
 
 @pytest.mark.asyncio

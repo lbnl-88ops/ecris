@@ -13,6 +13,11 @@ from .visa_driver import VISADriver
 _log = getLogger(__name__)
 
 
+class MeasurementMode(StrEnum):
+    CURRENT = "curr"
+    VOLTAGE = "volt"
+
+
 class SCPIDriver(SessionDriver):
     """
     Base driver for SCPI-compatible instruments.
@@ -21,6 +26,8 @@ class SCPIDriver(SessionDriver):
     Standard Commands for Programmable Instruments (SCPI). It can use either a Telnet
     or VISA backend for communication.
     """
+
+    MeasurementMode = MeasurementMode
 
     class DataKeys(Enum):
         CURRENT = auto()
@@ -62,10 +69,22 @@ class SCPIDriver(SessionDriver):
         LOOP_EXEC = "INIT; *WAI"
         AUTOZERO_OFF = ":sens:curr:azer off"
         AUTOZERO_ONCE = ":sens:azer:once"
+        VOLTAGE_FUNCTION = ':sens:func "volt"'
+        VOLTAGE_AUTO_RANGE = ":sens:volt:rang:auto on"
+        VOLTAGE_AUTO_RANGE_OFF = ":sens:volt:rang:auto off"
+        VOLTAGE_NPLC_AUTO_OFF = ":sens:volt:nplc:auto off"
+        VOLTAGE_SET_APERATURE = ":sens:volt:aper {}"
+        VOLTAGE_GET_APERATURE = ":sens:volt:aper?"
+        VOLTAGE_MIN_RANGE = ":sens:volt:range min"
+        VOLTAGE_DELAY_DISABLE = ":sens:volt:delay:auto off"
 
         @staticmethod
         def set_range(value_to_measure: float):
             return f":sens:curr:rang {value_to_measure:.2e}"
+
+        @staticmethod
+        def set_voltage_range(value_to_measure: float) -> str:
+            return f":sens:volt:rang {value_to_measure:.2e}"
 
         @staticmethod
         def get_trace_data(start: int, end: int, buffer_name: str) -> str:

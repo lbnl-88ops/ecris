@@ -2,7 +2,7 @@ import asyncio
 from logging import getLogger
 
 from .base import SessionDriver
-from .scpi_driver import SCPIDriver
+from .scpi_driver import MeasurementMode, SCPIDriver
 from .telnet_driver import TelnetDriver
 from .visa_driver import VISADriver
 
@@ -25,6 +25,7 @@ class Keithley(SCPIDriver):
         connection: SessionDriver = None,
         id: str = ID,
         command_echo: bool = False,
+        mode: SCPIDriver.MeasurementMode = SCPIDriver.MeasurementMode.CURRENT,
     ):
         super().__init__(
             aperture_time=aperture_time,
@@ -32,6 +33,7 @@ class Keithley(SCPIDriver):
             id=id,
             command_echo=command_echo,
         )
+        self.mode = mode
 
     @classmethod
     def connect_at_ip(
@@ -42,6 +44,7 @@ class Keithley(SCPIDriver):
         id: str = ID,
         aperture_time: float = 0.0166,
         command_echo: bool = False,
+        mode: SCPIDriver.MeasurementMode = SCPIDriver.MeasurementMode.CURRENT,
         **kwargs,
     ):
         telnet_driver = TelnetDriver(id=id, ip=ip, port=port, prompt=prompt)
@@ -50,6 +53,7 @@ class Keithley(SCPIDriver):
             connection=telnet_driver,
             id=id,
             command_echo=command_echo,
+            mode=mode,
             **kwargs,
         )
 
@@ -60,6 +64,7 @@ class Keithley(SCPIDriver):
         id: str = ID,
         aperture_time: float = 0.0166,
         command_echo: bool = False,
+        mode: SCPIDriver.MeasurementMode = SCPIDriver.MeasurementMode.CURRENT,
         **kwargs,
     ):
         visa_driver = VISADriver(resource_name, id=id)
@@ -68,6 +73,7 @@ class Keithley(SCPIDriver):
             connection=visa_driver,
             id=id,
             command_echo=command_echo,
+            mode=mode,
             **kwargs,
         )
 
@@ -89,12 +95,20 @@ class Keithley(SCPIDriver):
         await self.reset()
         _log.debug(f"Setting up {self.id} at {self._host}...")
         await asyncio.sleep(2)
-        setup_commands = [
-            SCPIDriver.Commands.CURRENT_FUNCTION,
-            SCPIDriver.Commands.CURRENT_AUTO_RANGE,
-            SCPIDriver.Commands.CURRENT_DELAY_DISABLE,
-            SCPIDriver.Commands.CURRENT_SET_APERATURE.format(self.aperture_time),
-        ]
+        if self.mode == SCPIDriver.MeasurementMode.VOLTAGE:
+            setup_commands = [
+                SCPIDriver.Commands.VOLTAGE_FUNCTION,
+                SCPIDriver.Commands.VOLTAGE_AUTO_RANGE,
+                SCPIDriver.Commands.VOLTAGE_DELAY_DISABLE,
+                SCPIDriver.Commands.VOLTAGE_SET_APERATURE.format(self.aperture_time),
+            ]
+        else:
+            setup_commands = [
+                SCPIDriver.Commands.CURRENT_FUNCTION,
+                SCPIDriver.Commands.CURRENT_AUTO_RANGE,
+                SCPIDriver.Commands.CURRENT_DELAY_DISABLE,
+                SCPIDriver.Commands.CURRENT_SET_APERATURE.format(self.aperture_time),
+            ]
         for command in setup_commands:
             _log.debug(f"sending command {command}")
             await self.send_silent_command(command)

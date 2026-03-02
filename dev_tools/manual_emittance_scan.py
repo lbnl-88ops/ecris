@@ -12,12 +12,13 @@ from ops.ecris.devices import (
     MotorController,
     Voltmeter,
 )
-from ops.ecris.devices.biases import POSITIVE_VALUES_ONLY
+from ops.ecris.devices.biases import POSITIVE_VALUES_ONLY, SCALE_VALUE
 from ops.ecris.devices.deflection_plate_controller import (
     LABJACK_DEFLECTION_PLATE_BIAS,
 )
 from ops.ecris.devices.motor_controller_specification import Axis
 from ops.ecris.drivers.keithley import Keithley
+from ops.ecris.drivers.scpi_driver import SCPIDriver
 from ops.ecris.drivers.labjack import LabJack
 from ops.ecris.drivers.scpi_driver import SCPIDriver
 from ops.ecris.drivers.venus_plc import VENUSController, VenusPLC
@@ -38,16 +39,29 @@ async def main(args):
     labjack_driver = LabJack()
     motor_driver = MotorController(ip="10.10.100.60", port=5002)
     venus_plc_driver = VenusPLC(VENUSController(read_only=True))
-    keithley_driver = Keithley.connect_at_usb(
-        resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", aperture_time=0.0166
-    )
 
-    # Devices
-    scanner_ammeter = BiasedAmmeter(
-        connection=keithley_driver,
-        read_key=Keithley.DataKeys.CURRENT,
-        bias_function=POSITIVE_VALUES_ONLY,
-    )
+    if args.scale_factor is not None:
+        # Voltage-mode: instrument reads voltage; scale_factor converts V → A (or desired units).
+        keithley_driver = Keithley.connect_at_usb(
+            resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR",
+            aperture_time=0.0166,
+            mode=SCPIDriver.MeasurementMode.VOLTAGE,
+        )
+        scanner_ammeter = BiasedAmmeter(
+            connection=keithley_driver,
+            read_key=Keithley.DataKeys.VOLTAGE,
+            bias_function=SCALE_VALUE(args.scale_factor),
+        )
+    else:
+        # Current-mode: default behaviour — clamp negative readings to zero.
+        keithley_driver = Keithley.connect_at_usb(
+            resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", aperture_time=0.0166
+        )
+        scanner_ammeter = BiasedAmmeter(
+            connection=keithley_driver,
+            read_key=Keithley.DataKeys.CURRENT,
+            bias_function=POSITIVE_VALUES_ONLY,
+        )
 
     deflector_v_source = BiasedVoltageSource(
         connection=labjack_driver,
@@ -117,8 +131,14 @@ async def main(args):
         await keithley_driver.connect()
         await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
         await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_OFF)
-        await keithley_driver.send_silent_command(SCPIDriver.Commands.CURRENT_AUTO_RANGE_OFF)
-        await keithley_driver.send_silent_command(SCPIDriver.Commands.set_range(10e-6))
+
+        if args.scale_factor is not None:
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_AUTO_RANGE_OFF)
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.set_voltage_range(10.0))
+        else:
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.CURRENT_AUTO_RANGE_OFF)
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.set_range(10e-6))
+
         results = await scan_operation.run()
         _log.info("Scan completed successfully.")
         save_emittance_scan(
@@ -148,6 +168,16 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="Optional path to save the resulting data matrix as a CSV file.",
+    )
+    parser.add_argument(
+        "--scale-factor",
+        type=float,
+        default=None,
+        help=(
+            "If provided, the Keithley is placed in VOLTAGE measurement mode and each "
+            "raw voltage reading is multiplied by this factor (e.g. to convert V → A). "
+            "When omitted the instrument defaults to CURRENT mode with POSITIVE_VALUES_ONLY."
+        ),
     )
     parser.add_argument(
         "-v",
