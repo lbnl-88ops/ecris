@@ -196,6 +196,7 @@ class MotorController(TelnetDriver):
                 await self.send_command(Commands.DRIVE_OFF(axis))
                 raise DeviceMalfunctionError(f"Axis {axis} cannot be cleared")
         if self.is_centered(axis):
+            _log.debug('Device already centered')
             await self._move_to_position_unsafe(axis, 0)
             return
         await self._move_to_position_unsafe(axis, -200)

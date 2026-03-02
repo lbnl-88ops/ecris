@@ -87,7 +87,7 @@ class LinearEmittanceScan(ABC):
             )
         return divergence_trace
 
-    async def run(self) -> np.ndarray:
+    async def run(self, keep_centered: bool = False) -> np.ndarray:
         """
         Executes the emittance scan, collecting data and returning it as a 2D numpy array.
         """
@@ -116,7 +116,12 @@ class LinearEmittanceScan(ABC):
                     )
                     await self._motor.move_to_position(self.params.axis, position)
                     beam_trace[:, i] = await self._scan_divergences(self.divergence_array)
-                await self._motor.move_axis_to_positive_eof(self.params.axis)
+                if keep_centered:
+                    _log.info('Returning to center position...')
+                    await self._motor.move_to_position(self.params.axis, 0)
+                else:
+                    _log.info('Returning to out position...')
+                    await self._motor.move_axis_to_positive_eof(self.params.axis)
                 await self._deflection_plate_controller.set_divergence(0)
                 duration = time.monotonic() - start_time
                 _log.info(f"Emittance scan finished successfully in {duration:.2f} seconds.")

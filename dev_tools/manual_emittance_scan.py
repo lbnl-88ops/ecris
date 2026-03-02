@@ -89,6 +89,10 @@ async def main(args):
         samples_per_point=1,
     )
 
+    if args.centered:
+        _log.info('Motor is already centered')
+        motor_driver._centered[scan_parameters.axis] = True
+
     # Emittance scan
     scan_operation = LinearEmittanceScan(
         motor=motor_driver,
@@ -147,7 +151,7 @@ async def main(args):
             await keithley_driver.send_silent_command(SCPIDriver.Commands.set_range(10e-6))
             await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
 
-        results = await scan_operation.run()
+        results = await scan_operation.run(keep_centered=False)
         _log.info("Scan completed successfully.")
         save_emittance_scan(
             filepath="scan.h5",
@@ -192,6 +196,12 @@ if __name__ == "__main__":
         "--verbose",
         action="store_true",
         help="Enable verbose DEBUG level logging.",
+    )
+    parser.add_argument(
+        "-c",
+        "--centered",
+        action="store_true",
+        help="Drive is already centered",
     )
 
     args = parser.parse_args()

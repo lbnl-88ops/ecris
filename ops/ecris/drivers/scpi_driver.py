@@ -160,6 +160,9 @@ class SCPIDriver(SessionDriver):
 
     async def connect(self) -> None:
         _log.debug(f"Connecting to {self.id} at {self._host}...")
+        if self.is_connected:
+            _log.debug(f"Device already connected.")
+            return
         await self._backend.connect()
         # Handshake and setup are done by the transport's connect, but we might want
         # to ensure they are called on this object if not already called.
