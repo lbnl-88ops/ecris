@@ -1,6 +1,6 @@
 import asyncio
 from logging import getLogger
-from typing import Any, Awaitable, Callable, List, Type, TypeVar, get_args, get_origin, overload
+from typing import Any, List, Type, TypeVar, get_args, get_origin, overload
 
 from ops.ecris.drivers.telnet_driver import TelnetDriver
 from ops.ecris.utilities.decorators import with_lock_named
@@ -17,10 +17,6 @@ from .motor_controller_specification import (
 _log = getLogger(__name__)
 
 
-class InterlockError(Exception):
-    pass
-
-
 _T = TypeVar("_T")
 
 
@@ -32,11 +28,8 @@ class MotorController(TelnetDriver):
         port: int | None = None,
         prompt: str = "SYS>",
         encoding: str = "ascii",
-        *,
-        interlock_check: Callable[[], Awaitable[bool]],
     ):
         super().__init__(id, ip, port, prompt, encoding, command_terminator="\r")
-        self._interlock_check = interlock_check
         self._move_lock = asyncio.Lock()
         self._centered = {a: False for a in Axis}
 
@@ -166,8 +159,6 @@ class MotorController(TelnetDriver):
 
     @with_lock_named("_move_lock")
     async def move_to_position(self, axis: Axis, position: float, *, relative=False):
-        if not await self._interlock_check():
-            raise InterlockError("Move prevented: Interlock check failed.")
         return await self._move_to_position_unsafe(axis, position, relative=relative)
 
     async def _move_to_position_unsafe(self, axis: Axis, position: float, *, relative=False):
@@ -189,8 +180,6 @@ class MotorController(TelnetDriver):
 
     @with_lock_named("_move_lock")
     async def move_axis_to_positive_eof(self, axis):
-        if not await self._interlock_check():
-            raise InterlockError("Move prevented: Interlock check failed.")
         await self._move_axis_to_positive_eof_unsafe(axis)
 
     async def _move_axis_to_positive_eof_unsafe(self, axis):
@@ -200,8 +189,6 @@ class MotorController(TelnetDriver):
 
     @with_lock_named("_move_lock")
     async def center_axis(self, axis):
-        if not await self._interlock_check():
-            raise InterlockError("Move prevented: Interlock check failed.")
         if not await self._is_axis_clear_to_move_unsafe(axis):
             perpendicular_axis = PERPENDICULAR_AXIS[axis]
             await self._move_axis_to_positive_eof_unsafe(perpendicular_axis)

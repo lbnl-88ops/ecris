@@ -2,12 +2,14 @@ import asyncio
 import time
 from abc import ABC
 from logging import getLogger
+from typing import Awaitable, Callable
 
 import numpy as np
 
 from ops.ecris.devices.ammeter import Ammeter
 from ops.ecris.devices.deflection_plate_controller import DeflectionPlateController
-from ops.ecris.devices.motor_controller import InterlockError, MotorController
+from ops.ecris.devices.motor_controller import MotorController
+from ops.ecris.exceptions import InterlockError
 
 from .parameters import LinearScanParameters
 
@@ -23,11 +25,13 @@ class LinearEmittanceScan(ABC):
         ammeter: Ammeter,
         deflection_plate_controller: DeflectionPlateController,
         scan_params: LinearScanParameters,
+        interlock_check: Callable[[], Awaitable[bool]] | None = None,
     ):
         self._motor = motor
         self._ammeter = ammeter
         self._deflection_plate_controller = deflection_plate_controller
         self.params = scan_params
+        self._interlock_check = interlock_check
 
     @property
     def position_array(self) -> np.ndarray:
@@ -91,6 +95,9 @@ class LinearEmittanceScan(ABC):
         Executes the emittance scan, collecting data and returning it as a 2D numpy array.
         """
         async with self._scan_lock:
+            if self._interlock_check is not None and not await self._interlock_check():
+                raise InterlockError("Emittance scan blocked: Interlock check failed.")
+
             start_time = time.monotonic()
 
             n_positions = len(self.position_array)
@@ -106,11 +113,7 @@ class LinearEmittanceScan(ABC):
 
             try:
                 await self._connect_all_devices()
-                try:
-                    await self._motor.center_axis(self.params.axis)
-                except InterlockError as e:
-                    _log.error(f"Cannot perform scan due to interlock: {e}")
-                    return beam_trace
+                await self._motor.center_axis(self.params.axis)
 
                 for i, position in enumerate(self.position_array):
                     _log.info(f"Processing position {i + 1}/{n_positions}: {position:.3f} mm")

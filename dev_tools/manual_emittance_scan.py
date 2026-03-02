@@ -22,6 +22,7 @@ from ops.ecris.drivers.scpi_driver import SCPIDriver
 from ops.ecris.drivers.labjack import LabJack
 from ops.ecris.drivers.scpi_driver import SCPIDriver
 from ops.ecris.drivers.venus_plc import VENUSController, VenusPLC
+from ops.ecris.exceptions import InterlockError
 from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
 from ops.ecris.operations.emittance_scan.save_scan import save_emittance_scan
 
@@ -43,7 +44,7 @@ async def main(args):
         # fcv1_in is True when IN (blocking), False when OUT (clear)
         return not bool(await venus_plc_driver.read_data(VenusPLC.DataKeys.FARADAY_CUP_IN))
 
-    motor_driver = MotorController(ip="10.10.100.60", port=5002, interlock_check=is_fcv1_out)
+    motor_driver = MotorController(ip="10.10.100.60", port=5002)
 
     if args.scale_factor is not None:
         # Voltage-mode: instrument reads voltage; scale_factor converts V → A (or desired units).
@@ -104,6 +105,7 @@ async def main(args):
         ammeter=scanner_ammeter,
         deflection_plate_controller=dpc,
         scan_params=scan_parameters,
+        interlock_check=is_fcv1_out,
     )
 
     # result = await scan_operation.run()
@@ -156,7 +158,11 @@ async def main(args):
             await keithley_driver.send_silent_command(SCPIDriver.Commands.set_range(10e-6))
             await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
 
-        results = await scan_operation.run(keep_centered=False)
+        try:
+            results = await scan_operation.run(keep_centered=False)
+        except InterlockError as e:
+            _log.error(f"Scan aborted: {e}")
+            return
         _log.info("Scan completed successfully.")
         save_emittance_scan(
             filepath="scan.h5",
