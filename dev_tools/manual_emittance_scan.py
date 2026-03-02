@@ -38,7 +38,7 @@ async def main(args):
     motor_driver = MotorController(ip="10.10.100.60", port=5024)
     venus_plc_driver = VenusPLC(VENUSController(read_only=True))
     keithley_driver = Keithley.connect_at_usb(
-        resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", sample_frequency_hz=60
+        resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", aperture_time=0.0166
     )
 
     # Devices

@@ -76,14 +76,14 @@ class SCPIDriver(SessionDriver):
 
     def __init__(
         self,
-        sample_frequency_hz: float,
-        connection: SessionDriver,
+        aperture_time: float = 0.0166,
+        connection: SessionDriver = None,
         id: str = "SCPI Device",
         command_echo: bool = False,
     ):
         self.id = id
         self.command_echo = command_echo
-        self.nplc_setting = 6000 / sample_frequency_hz
+        self.aperture_time = aperture_time
         self._prompt = connection._prompt if isinstance(connection, TelnetDriver) else None
         self._backend = connection
 
@@ -94,13 +94,13 @@ class SCPIDriver(SessionDriver):
         port: int,
         prompt: str | None = None,
         id: str = "SCPI Device",
-        sample_frequency_hz: float = 60.0,
+        aperture_time: float = 0.0166,
         command_echo: bool = False,
         **kwargs,
     ):
         telnet_driver = TelnetDriver(id=id, ip=ip, port=port, prompt=prompt)
         return cls(
-            sample_frequency_hz=sample_frequency_hz,
+            aperture_time=aperture_time,
             connection=telnet_driver,
             id=id,
             command_echo=command_echo,
@@ -112,13 +112,13 @@ class SCPIDriver(SessionDriver):
         cls,
         resource_name: str,
         id: str = "SCPI Device",
-        sample_frequency_hz: float = 60.0,
+        aperture_time: float = 0.0166,
         command_echo: bool = False,
         **kwargs,
     ):
         visa_driver = VISADriver(resource_name, id=id)
         return cls(
-            sample_frequency_hz=sample_frequency_hz,
+            aperture_time=aperture_time,
             connection=visa_driver,
             id=id,
             command_echo=command_echo,

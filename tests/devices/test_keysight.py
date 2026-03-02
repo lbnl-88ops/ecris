@@ -16,7 +16,7 @@ def mock_keysight_connection():
         mock_writer.is_closing = MagicMock(return_value=False)
         mock_open_conn.return_value = (mock_reader, mock_writer)
 
-        keysight = Keysight.connect_at_ip(ip="127.0.0.1", port=9999, sample_frequency_hz=1.0)
+        keysight = Keysight.connect_at_ip(ip="127.0.0.1", port=9999, aperture_time=0.0166)
 
         yield keysight, mock_reader, mock_writer, mock_open_conn
 
@@ -24,13 +24,13 @@ def mock_keysight_connection():
 @pytest.mark.asyncio
 async def test_connect_sends_correct_commands(mock_keysight_connection):
     keysight, mock_reader, mock_writer, mock_open_conn = mock_keysight_connection
-    expected_nplc = 6000.0
+    expected_aperture = 0.0166
     setup_commands = [
         "*rst",
         ':sens:func "curr"',
         ":sens:curr:rang:auto on",
         ":sens:curr:nplc:auto off",
-        f":sens:curr:nplc {expected_nplc}",
+        f":sens:curr:aper {expected_aperture}",
         ":inp on",
     ]
     banner = "Welcome to Keysight B2900A Series.\r\nB2900A> "

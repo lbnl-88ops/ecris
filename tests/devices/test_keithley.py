@@ -14,7 +14,7 @@ def mock_keithley_connection():
         mock_writer.is_closing = MagicMock(return_value=False)
         mock_open_conn.return_value = (mock_reader, mock_writer)
 
-        keithley = Keithley.connect_at_ip(ip="127.0.0.1", port=9999, sample_frequency_hz=60)
+        keithley = Keithley.connect_at_ip(ip="127.0.0.1", port=9999, aperture_time=0.0166)
 
         yield keithley, mock_reader, mock_writer, mock_open_conn
 
@@ -22,7 +22,7 @@ def mock_keithley_connection():
 @pytest.mark.asyncio
 async def test_connect_sends_correct_commands(mock_keithley_connection):
     keithley, mock_reader, mock_writer, mock_open_conn = mock_keithley_connection
-    expected_nplc = 100.0
+    expected_aperture = 0.0166
     handshake_commands = [
         "*lang scpi",
         ":trace:clear",
@@ -37,7 +37,7 @@ async def test_connect_sends_correct_commands(mock_keithley_connection):
         ':sens:func "curr"',
         ":sens:curr:rang:auto on",
         ":sens:curr:delay:auto off",
-        f":sens:curr:nplc {expected_nplc}",
+        f":sens:curr:aper {expected_aperture}",
     ]
     read_until_effects = [v.encode("ascii") for v in handshake_return_values]
 

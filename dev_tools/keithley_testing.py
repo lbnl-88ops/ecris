@@ -29,7 +29,7 @@ async def run_timing_test(mod: int):
     averages = []
     stdevs = []
 
-    keithley_driver = Keithley.connect_at_ip(ip=IPS[mod], port=PORT, sample_frequency_hz=108000)
+    keithley_driver = Keithley.connect_at_ip(ip=IPS[mod], port=PORT, aperture_time=0.0166)
     await keithley_driver.connect()
     ammeter = Ammeter(
         keithley_driver,
@@ -113,7 +113,7 @@ def run_usb_test():
 async def run_signal_test(mod: int):
     print("[bold green]--- Keithley signal testing ---[/bold green]")
 
-    keithley_driver = Keithley.connect_at_ip(ip=IPS[mod], port=PORT, sample_frequency_hz=36000)
+    keithley_driver = Keithley.connect_at_ip(ip=IPS[mod], port=PORT, aperture_time=0.0166)
     await keithley_driver.connect()
     ammeter = Ammeter(
         keithley_driver,

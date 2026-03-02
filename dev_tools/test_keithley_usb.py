@@ -16,8 +16,8 @@ async def main():
     print(f"Target Resource: [cyan]{resource_name}[/cyan]")
 
     # Initialize the driver
-    # Using 60Hz as a standard sample frequency for NPLC 1.0
-    keithley = Keithley.connect_at_usb(resource_name=resource_name, sample_frequency_hz=60)
+    # Using 0.0166 seconds (16.6ms) as the default aperture time
+    keithley = Keithley.connect_at_usb(resource_name=resource_name, aperture_time=0.0166)
 
     try:
         print("Connecting to instrument...")

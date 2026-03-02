@@ -17,7 +17,7 @@ async def test_keithley_visa_connect():
         mock_instrument.read.side_effect = ["0", "KEITHLEY DMM7512"]
 
         keithley = Keithley.connect_at_usb(
-            resource_name="USB0::0x05E6::0x7510::INSTR", sample_frequency_hz=60
+            resource_name="USB0::0x05E6::0x7510::INSTR", aperture_time=0.0166
         )
 
         with patch("asyncio.sleep"):
@@ -36,7 +36,7 @@ async def test_keithley_visa_connect():
             call(':sens:func "curr"'),
             call(":sens:curr:rang:auto on"),
             call(":sens:curr:delay:auto off"),
-            call(":sens:curr:nplc 100.0"),
+            call(":sens:curr:aper 0.0166"),
         ]
         # Depending on how send_command/send_silent_command are called,
         # it might use write or query.
