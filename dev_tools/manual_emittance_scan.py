@@ -19,6 +19,7 @@ from ops.ecris.devices.deflection_plate_controller import (
 from ops.ecris.devices.motor_controller_specification import Axis
 from ops.ecris.drivers.keithley import Keithley
 from ops.ecris.drivers.labjack import LabJack
+from ops.ecris.drivers.scpi_driver import SCPIDriver
 from ops.ecris.drivers.venus_plc import VENUSController, VenusPLC
 from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
 from ops.ecris.operations.emittance_scan.save_scan import save_emittance_scan
@@ -35,7 +36,7 @@ async def main(args):
 
     # Drivers
     labjack_driver = LabJack()
-    motor_driver = MotorController(ip="10.10.100.60", port=5024)
+    motor_driver = MotorController(ip="10.10.100.60", port=5002)
     venus_plc_driver = VenusPLC(VENUSController(read_only=True))
     keithley_driver = Keithley.connect_at_usb(
         resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", aperture_time=0.0166
@@ -66,12 +67,12 @@ async def main(args):
     scan_parameters = LinearScanParameters(
         axis=Axis.VenusX,
         position_min=-10,
-        position_max=10,
+        position_max=2,
         position_step=1.0,
-        divergence_min=-50,
-        divergence_max=50,
-        divergence_step=1.0,
-        samples_per_point=2000,
+        divergence_min=-150,
+        divergence_max=150,
+        divergence_step=2.0,
+        samples_per_point=1,
     )
 
     # Emittance scan
@@ -82,13 +83,13 @@ async def main(args):
         scan_params=scan_parameters,
     )
 
-    result = await scan_operation.run()
-    save_emittance_scan(
-        filepath="scan.h5",
-        data=result,
-        parameters=scan_parameters,
-        additional_metadata={"user": "manual_emittance_scan"},
-    )
+    # result = await scan_operation.run()
+    # save_emittance_scan(
+    #     filepath="scan.h5",
+    #     data=result,
+    #     parameters=scan_parameters,
+    #     additional_metadata={"user": "manual_emittance_scan"},
+    # )
 
     _log.info("--- Scan Configuration Summary ---")
     _log.info(f"               Axis: {scan_parameters.axis.name}")
@@ -114,8 +115,18 @@ async def main(args):
     _log.info("User confirmed. Starting scan...")
     try:
         await keithley_driver.connect()
+        await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
+        await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_OFF)
+        await keithley_driver.send_silent_command(SCPIDriver.Commands.CURRENT_AUTO_RANGE_OFF)
+        await keithley_driver.send_silent_command(SCPIDriver.Commands.set_range(10e-6))
         results = await scan_operation.run()
         _log.info("Scan completed successfully.")
+        save_emittance_scan(
+            filepath="scan.h5",
+            data=results,
+            parameters=scan_parameters,
+            additional_metadata={"user": "manual_emittance_scan"},
+        )
 
         if args.output:
             _log.info(f"Saving results matrix to {args.output}")

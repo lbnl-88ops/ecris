@@ -64,15 +64,21 @@ class LinearEmittanceScan(ABC):
         _log.info("All devices disconnected.")
 
     async def _scan_divergences(self, divergences: np.ndarray) -> np.ndarray:
+
         divergence_trace = np.zeros_like(divergences)
         for j, divergence in enumerate(divergences):
             _log.debug(f"  Setting divergence to {divergence:.4f} rad")
+            start = time.perf_counter()
             await self._deflection_plate_controller.set_divergence(divergence)
 
+            _log.info(f"Divergence set in {start - time.perf_counter()}")
+
             total_current = []
+            start = time.perf_counter()
             for _ in range(self.params.samples_per_point):
                 current_reading = await self._ammeter.read_current()
                 total_current.append(current_reading)
+            _log.info(f"Samples taken in {start - time.perf_counter()}")
             mean_current = np.mean(total_current)
             divergence_trace[j] = mean_current
             _log.debug(
@@ -101,6 +107,7 @@ class LinearEmittanceScan(ABC):
 
             try:
                 await self._connect_all_devices()
+                await self._motor.center_axis(self.params.axis)
 
                 for i, position in enumerate(self.position_array):
                     _log.info(f"Processing position {i + 1}/{n_positions}: {position:.3f} mm")
@@ -109,7 +116,8 @@ class LinearEmittanceScan(ABC):
                     )
                     await self._motor.move_to_position(self.params.axis, position)
                     beam_trace[:, i] = await self._scan_divergences(self.divergence_array)
-
+                await self._motor.move_axis_to_positive_eof(self.params.axis)
+                await self._deflection_plate_controller.set_divergence(0)
                 duration = time.monotonic() - start_time
                 _log.info(f"Emittance scan finished successfully in {duration:.2f} seconds.")
                 return beam_trace

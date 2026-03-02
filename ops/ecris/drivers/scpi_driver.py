@@ -41,6 +41,7 @@ class SCPIDriver(SessionDriver):
         SET_NPLC = ":sens:curr:nplc {}"
         CURRENT_FUNCTION = ':sens:func "curr"'
         CURRENT_AUTO_RANGE = ":sens:curr:rang:auto on"
+        CURRENT_AUTO_RANGE_OFF = ":sens:curr:rang:auto off"
         CURRENT_NPLC_AUTO_OFF = ":sens:curr:nplc:auto off"
         CURRENT_SET_APERATURE = ":sens:curr:aper {}"
         CURRENT_GET_APERATURE = ":sens:curr:aper?"

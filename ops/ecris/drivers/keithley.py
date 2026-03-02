@@ -96,7 +96,7 @@ class Keithley(SCPIDriver):
             SCPIDriver.Commands.CURRENT_SET_APERATURE.format(self.aperture_time),
         ]
         for command in setup_commands:
-            print(f"sending command {command}")
+            _log.debug(f"sending command {command}")
             await self.send_silent_command(command)
         await asyncio.sleep(5)
         _log.debug("Setup complete.")
