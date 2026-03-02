@@ -3,10 +3,12 @@ import time
 
 import numpy as np
 import pyvisa
+from pyvisa.resources import MessageBasedResource
 from rich import print
 from rich.progress import track
 
 from ops.ecris.devices.ammeter import Ammeter
+from ops.ecris.devices.power_supply import VoltageSource
 from ops.ecris.drivers.keithley import Keithley
 from ops.ecris.drivers.scpi_driver import SCPIDriver
 
@@ -71,17 +73,18 @@ async def run_timing_test(mod: int):
 def run_usb_test():
     print("[bold green]--- Keithley timing testing ---[/bold green]")
     rm = pyvisa.ResourceManager()
-    keithley = rm.open_resource("USB0::1510::29970::04684146\x00\x00::0::INSTR")
-    keithley.write(SCPIDriver.Commands.CURRENT_FUNCTION)
-    keithley.write(SCPIDriver.Commands.set_range(6e-3))
-    keithley.write(SCPIDriver.Commands.CURRENT_DELAY_DISABLE)
-    keithley.write(SCPIDriver.Commands.AUTOZERO_OFF)
+    keithley: MessageBasedResource = rm.open_resource("USB0::1510::29970::04684146\x00\x00::0::INSTR")
+    keithley.write(SCPIDriver.Commands.VOLTAGE_FUNCTION)
+    keithley.write(SCPIDriver.Commands.VOLTAGE_AUTO_RANGE_OFF)
+    keithley.write(SCPIDriver.Commands.VOLTAGE_AUTOZERO_OFF)
+    keithley.write(SCPIDriver.Commands.VOLTAGE_DELAY_DISABLE)
+    keithley.write(SCPIDriver.Commands.set_voltage_range(1e-3))
     keithley.write(SCPIDriver.Commands.AUTOZERO_ONCE)
 
     min_ap = np.log10(8.4e-6)
     max_ap = np.log10(36e-3)
     # aperatures = np.logspace(min_ap, max_ap, 100)
-    aperatures = [0.5e-3]
+    aperatures = [1E-3]
     averages = []
     stdevs = []
     values = []
@@ -90,11 +93,11 @@ def run_usb_test():
         print(f"> Running test {i + 1}/{len(aperatures)} for [bold cyan]{aperature} s[/bold cyan]")
         iterations = 1000
         times = []
-        keithley.write(SCPIDriver.Commands.CURRENT_SET_APERATURE.format(aperature))
+        keithley.write(SCPIDriver.Commands.VOLTAGE_SET_APERATURE.format(aperature))
         try:
             for j in track(range(iterations), description="Testing..."):
                 start_time = time.perf_counter()
-                value = keithley.query_ascii_values(SCPIDriver.Commands.MEASURE_CURRENT)
+                value = keithley.query_ascii_values(SCPIDriver.Commands.MEASURE_VOLTAGE)
                 end_time = time.perf_counter()
                 times.append(end_time - start_time)
                 if j == 0:
@@ -102,6 +105,7 @@ def run_usb_test():
             if i == 0:
                 np.save("times_usb", np.array(times))
             averages.append(np.average(times[1:]))
+            print(f'Average {averages[-1]}')
             stdevs.append(np.std(times[1:]))
         except Exception as exc:
             _log.error(exc)

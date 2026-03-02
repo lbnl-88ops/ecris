@@ -44,7 +44,7 @@ async def main(args):
         # Voltage-mode: instrument reads voltage; scale_factor converts V → A (or desired units).
         keithley_driver = Keithley.connect_at_usb(
             resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR",
-            aperture_time=0.0166,
+            aperture_time=1E-3,
             mode=SCPIDriver.MeasurementMode.VOLTAGE,
         )
         scanner_ammeter = BiasedAmmeter(
@@ -55,7 +55,7 @@ async def main(args):
     else:
         # Current-mode: default behaviour — clamp negative readings to zero.
         keithley_driver = Keithley.connect_at_usb(
-            resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", aperture_time=0.0166
+            resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", aperture_time=1E-3
         )
         scanner_ammeter = BiasedAmmeter(
             connection=keithley_driver,
@@ -80,12 +80,12 @@ async def main(args):
 
     scan_parameters = LinearScanParameters(
         axis=Axis.VenusX,
-        position_min=-10,
+        position_min=-2,
         position_max=2,
         position_step=1.0,
-        divergence_min=-150,
-        divergence_max=150,
-        divergence_step=2.0,
+        divergence_min=-100,
+        divergence_max=100,
+        divergence_step=50.0,
         samples_per_point=1,
     )
 
@@ -129,12 +129,12 @@ async def main(args):
     _log.info("User confirmed. Starting scan...")
     try:
         await keithley_driver.connect()
-        await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
         await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_OFF)
+        await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
 
         if args.scale_factor is not None:
             await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_AUTO_RANGE_OFF)
-            await keithley_driver.send_silent_command(SCPIDriver.Commands.set_voltage_range(10.0))
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.set_voltage_range(100E-3))
         else:
             await keithley_driver.send_silent_command(SCPIDriver.Commands.CURRENT_AUTO_RANGE_OFF)
             await keithley_driver.send_silent_command(SCPIDriver.Commands.set_range(10e-6))

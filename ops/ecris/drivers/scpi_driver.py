@@ -77,6 +77,7 @@ class SCPIDriver(SessionDriver):
         VOLTAGE_GET_APERATURE = ":sens:volt:aper?"
         VOLTAGE_MIN_RANGE = ":sens:volt:range min"
         VOLTAGE_DELAY_DISABLE = ":sens:volt:delay:auto off"
+        VOLTAGE_AUTOZERO_OFF = ":sens:volt:azer off"
 
         @staticmethod
         def set_range(value_to_measure: float):
@@ -342,7 +343,7 @@ class SCPIDriver(SessionDriver):
                         try:
                             values = await self._backend.query_ascii_values(command)
                             if values:
-                                return values[0]
+                                return float(values[0])
                         except Exception as exc:
                             _log.debug(f"Error in VISA measurement: {exc}")
                     else:

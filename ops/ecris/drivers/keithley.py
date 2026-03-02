@@ -21,7 +21,7 @@ class Keithley(SCPIDriver):
 
     def __init__(
         self,
-        aperture_time: float = 0.0166,
+        aperture_time: float = 1E-3,
         connection: SessionDriver = None,
         id: str = ID,
         command_echo: bool = False,
@@ -42,7 +42,7 @@ class Keithley(SCPIDriver):
         port: int,
         prompt: str | None = None,
         id: str = ID,
-        aperture_time: float = 0.0166,
+        aperture_time: float = 1E-3,
         command_echo: bool = False,
         mode: SCPIDriver.MeasurementMode = SCPIDriver.MeasurementMode.CURRENT,
         **kwargs,
@@ -62,7 +62,7 @@ class Keithley(SCPIDriver):
         cls,
         resource_name: str,
         id: str = ID,
-        aperture_time: float = 0.0166,
+        aperture_time: float = 1E-3,
         command_echo: bool = False,
         mode: SCPIDriver.MeasurementMode = SCPIDriver.MeasurementMode.CURRENT,
         **kwargs,
