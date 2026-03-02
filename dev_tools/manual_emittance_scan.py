@@ -44,7 +44,7 @@ async def main(args):
         # Voltage-mode: instrument reads voltage; scale_factor converts V → A (or desired units).
         keithley_driver = Keithley.connect_at_usb(
             resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR",
-            aperture_time=1E-3,
+            aperture_time=1e-3,
             mode=SCPIDriver.MeasurementMode.VOLTAGE,
         )
         scanner_ammeter = BiasedAmmeter(
@@ -55,7 +55,7 @@ async def main(args):
     else:
         # Current-mode: default behaviour — clamp negative readings to zero.
         keithley_driver = Keithley.connect_at_usb(
-            resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", aperture_time=1E-3
+            resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", aperture_time=1e-3
         )
         scanner_ammeter = BiasedAmmeter(
             connection=keithley_driver,
@@ -129,15 +129,23 @@ async def main(args):
     _log.info("User confirmed. Starting scan...")
     try:
         await keithley_driver.connect()
-        await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_OFF)
-        await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
 
         if args.scale_factor is not None:
+            # Voltage Mode setup
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_AUTOZERO_OFF)
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_DELAY_DISABLE)
             await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_AUTO_RANGE_OFF)
-            await keithley_driver.send_silent_command(SCPIDriver.Commands.set_voltage_range(100E-3))
+            await keithley_driver.send_silent_command(
+                SCPIDriver.Commands.set_voltage_range(100e-3)
+            )
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
         else:
+            # Current Mode setup
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_OFF)
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.CURRENT_DELAY_DISABLE)
             await keithley_driver.send_silent_command(SCPIDriver.Commands.CURRENT_AUTO_RANGE_OFF)
             await keithley_driver.send_silent_command(SCPIDriver.Commands.set_range(10e-6))
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
 
         results = await scan_operation.run()
         _log.info("Scan completed successfully.")
