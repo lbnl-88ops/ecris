@@ -37,8 +37,13 @@ async def main(args):
 
     # Drivers
     labjack_driver = LabJack()
-    motor_driver = MotorController(ip="10.10.100.60", port=5002)
     venus_plc_driver = VenusPLC(VENUSController(read_only=True))
+
+    async def is_fcv1_out() -> bool:
+        # fcv1_in is True when IN (blocking), False when OUT (clear)
+        return not bool(await venus_plc_driver.read_data(VenusPLC.DataKeys.FARADAY_CUP_IN))
+
+    motor_driver = MotorController(ip="10.10.100.60", port=5002, interlock_check=is_fcv1_out)
 
     if args.scale_factor is not None:
         # Voltage-mode: instrument reads voltage; scale_factor converts V → A (or desired units).
@@ -90,7 +95,7 @@ async def main(args):
     )
 
     if args.centered:
-        _log.info('Motor is already centered')
+        _log.info("Motor is already centered")
         motor_driver._centered[scan_parameters.axis] = True
 
     # Emittance scan

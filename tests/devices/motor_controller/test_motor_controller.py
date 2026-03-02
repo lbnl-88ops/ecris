@@ -34,7 +34,11 @@ def mock_motor_controller_not_connected():
         mock_reader.readuntil = AsyncMock(side_effect=fake_controller.read_buffer)
         mock_writer.is_closing = MagicMock(return_value=False)
         mock_open_conn.return_value = (mock_reader, mock_writer)
-        controller = MotorController(ip="127.0.0.1", port=9999)
+
+        async def mock_interlock() -> bool:
+            return True
+
+        controller = MotorController(ip="127.0.0.1", port=9999, interlock_check=mock_interlock)
         yield controller, fake_controller, mock_open_conn, mock_sleep
 
 

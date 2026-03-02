@@ -7,7 +7,7 @@ import numpy as np
 
 from ops.ecris.devices.ammeter import Ammeter
 from ops.ecris.devices.deflection_plate_controller import DeflectionPlateController
-from ops.ecris.devices.motor_controller import MotorController
+from ops.ecris.devices.motor_controller import InterlockError, MotorController
 
 from .parameters import LinearScanParameters
 
@@ -64,7 +64,6 @@ class LinearEmittanceScan(ABC):
         _log.info("All devices disconnected.")
 
     async def _scan_divergences(self, divergences: np.ndarray) -> np.ndarray:
-
         divergence_trace = np.zeros_like(divergences)
         for j, divergence in enumerate(divergences):
             _log.debug(f"  Setting divergence to {divergence:.4f} rad")
@@ -107,7 +106,11 @@ class LinearEmittanceScan(ABC):
 
             try:
                 await self._connect_all_devices()
-                await self._motor.center_axis(self.params.axis)
+                try:
+                    await self._motor.center_axis(self.params.axis)
+                except InterlockError as e:
+                    _log.error(f"Cannot perform scan due to interlock: {e}")
+                    return beam_trace
 
                 for i, position in enumerate(self.position_array):
                     _log.info(f"Processing position {i + 1}/{n_positions}: {position:.3f} mm")
@@ -117,10 +120,10 @@ class LinearEmittanceScan(ABC):
                     await self._motor.move_to_position(self.params.axis, position)
                     beam_trace[:, i] = await self._scan_divergences(self.divergence_array)
                 if keep_centered:
-                    _log.info('Returning to center position...')
+                    _log.info("Returning to center position...")
                     await self._motor.move_to_position(self.params.axis, 0)
                 else:
-                    _log.info('Returning to out position...')
+                    _log.info("Returning to out position...")
                     await self._motor.move_axis_to_positive_eof(self.params.axis)
                 await self._deflection_plate_controller.set_divergence(0)
                 duration = time.monotonic() - start_time

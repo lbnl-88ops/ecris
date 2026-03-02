@@ -70,7 +70,11 @@ async def _parse_and_execute(controller: MotorController, user_input: str):
 
 async def run_interactive_test(host: str, port: int):
     """Connects to the controller and runs the interactive command loop."""
-    controller = MotorController(ip=host, port=port)
+
+    async def mock_interlock() -> bool:
+        return True
+
+    controller = MotorController(ip=host, port=port, interlock_check=mock_interlock)
     try:
         _log.info(f"Attempting to connect to motor controller at {host}:{port}...")
         await asyncio.wait_for(controller.connect(), timeout=20.0)
