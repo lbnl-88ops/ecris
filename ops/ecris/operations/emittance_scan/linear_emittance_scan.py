@@ -9,7 +9,7 @@ import numpy as np
 from ops.ecris.devices.ammeter import Ammeter
 from ops.ecris.devices.deflection_plate_controller import DeflectionPlateController
 from ops.ecris.devices.motor_controller import MotorController
-from ops.ecris.exceptions import InterlockError
+from ops.ecris.devices.exceptions import InterlockError
 
 from .parameters import LinearScanParameters
 

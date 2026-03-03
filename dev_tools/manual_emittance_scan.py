@@ -22,7 +22,7 @@ from ops.ecris.drivers.scpi_driver import SCPIDriver
 from ops.ecris.drivers.labjack import LabJack
 from ops.ecris.drivers.scpi_driver import SCPIDriver
 from ops.ecris.drivers.venus_plc import VENUSController, VenusPLC
-from ops.ecris.exceptions import InterlockError
+from ops.ecris.devices.exceptions import InterlockError
 from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
 from ops.ecris.operations.emittance_scan.save_scan import save_emittance_scan
 
