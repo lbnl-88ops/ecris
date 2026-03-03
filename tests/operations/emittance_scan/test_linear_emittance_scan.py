@@ -1,12 +1,13 @@
-import pytest
-import numpy as np
-from unittest.mock import AsyncMock, call, MagicMock
+from unittest.mock import AsyncMock, call
 
-from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
-from ops.ecris.devices.motor_controller import MotorController
+import numpy as np
+import pytest
+
 from ops.ecris.devices.ammeter import Ammeter
-from ops.ecris.devices.motor_controller_specification import Axis
 from ops.ecris.devices.deflection_plate_controller import DeflectionPlateController
+from ops.ecris.devices.motor_controller import MotorController
+from ops.ecris.devices.motor_controller_specification import Axis
+from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
 
 
 @pytest.fixture

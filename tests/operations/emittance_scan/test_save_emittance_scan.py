@@ -1,11 +1,10 @@
+
 import h5py
 import numpy as np
-import pytest
-from pathlib import Path
 
-from ops.ecris.operations.emittance_scan.save_scan import save_emittance_scan
-from ops.ecris.operations.emittance_scan.parameters import LinearScanParameters
 from ops.ecris.devices.motor_controller_specification import Axis
+from ops.ecris.operations.emittance_scan.parameters import LinearScanParameters
+from ops.ecris.operations.emittance_scan.save_scan import save_emittance_scan
 
 
 def test_save_emittance_scan_creates_file_and_stores_data(tmp_path):

@@ -1,7 +1,8 @@
 # test_keysight_pytest.py
 
+from unittest.mock import AsyncMock, MagicMock, call, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock, call
 
 from ops.ecris.drivers.keysight import Keysight
 
@@ -15,7 +16,7 @@ def mock_keysight_connection():
         mock_writer.is_closing = MagicMock(return_value=False)
         mock_open_conn.return_value = (mock_reader, mock_writer)
 
-        keysight = Keysight(read_frequency_per_min=60, ip="127.0.0.1", port=9999)
+        keysight = Keysight.connect_at_ip(ip="127.0.0.1", port=9999, aperture_time=0.0166)
 
         yield keysight, mock_reader, mock_writer, mock_open_conn
 
@@ -23,13 +24,13 @@ def mock_keysight_connection():
 @pytest.mark.asyncio
 async def test_connect_sends_correct_commands(mock_keysight_connection):
     keysight, mock_reader, mock_writer, mock_open_conn = mock_keysight_connection
-    expected_nplc = 1.0
+    expected_aperture = 0.0166
     setup_commands = [
         "*rst",
         ':sens:func "curr"',
         ":sens:curr:rang:auto on",
         ":sens:curr:nplc:auto off",
-        f":sens:curr:nplc {expected_nplc}",
+        f":sens:curr:aper {expected_aperture}",
         ":inp on",
     ]
     banner = "Welcome to Keysight B2900A Series.\r\nB2900A> "
@@ -55,8 +56,8 @@ async def test_connect_sends_correct_commands(mock_keysight_connection):
 @pytest.mark.asyncio
 async def test_read_data_sends_command_and_parses_response(mock_keysight_connection):
     keysight, mock_reader, mock_writer, _ = mock_keysight_connection
-    keysight._reader = mock_reader
-    keysight._writer = mock_writer
+    keysight._backend._reader = mock_reader
+    keysight._backend._writer = mock_writer
     command = "meas:curr?"
 
     mock_reader.readuntil.return_value = "meas:curr?\r\n  1.2345E-05\r\nB2900A> ".encode("ascii")

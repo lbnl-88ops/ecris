@@ -1,4 +1,4 @@
-from ops.ecris.devices.motor_controller_specification import Axis, Commands, Bit
+from ops.ecris.devices.motor_controller_specification import Axis, Bit, Commands
 
 
 class MoveSequences:

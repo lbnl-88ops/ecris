@@ -1,30 +1,30 @@
 # In: dev_tools/manual_scan.py
+import argparse
 import asyncio
 import logging
-import argparse
+
 import numpy as np
-import time
 
-from ops.ecris.drivers.labjack import LabJack
-from ops.ecris.drivers.telnet_driver import TelnetDriver
-from ops.ecris.drivers.venus_plc import VenusPLC, VENUSController
-
-from ops.ecris.devices.motor_controller_specification import Axis
 from ops.ecris.devices import (
-    MotorController,
     BiasedAmmeter,
-    Voltmeter,
     BiasedVoltageSource,
     DeflectionPlateController,
+    MotorController,
+    Voltmeter,
 )
-from ops.ecris.devices.biases import POSITIVE_VALUES_ONLY
+from ops.ecris.devices.biases import POSITIVE_VALUES_ONLY, SCALE_VALUE
 from ops.ecris.devices.deflection_plate_controller import (
     LABJACK_DEFLECTION_PLATE_BIAS,
 )
-
+from ops.ecris.devices.motor_controller_specification import Axis
+from ops.ecris.drivers.keithley import Keithley
+from ops.ecris.drivers.scpi_driver import SCPIDriver
+from ops.ecris.drivers.labjack import LabJack
+from ops.ecris.drivers.scpi_driver import SCPIDriver
+from ops.ecris.drivers.venus_plc import VENUSController, VenusPLC
+from ops.ecris.devices.exceptions import InterlockError
 from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
 from ops.ecris.operations.emittance_scan.save_scan import save_emittance_scan
-
 
 # Set up basic logging to see the output from our scan classes
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -38,15 +38,36 @@ async def main(args):
 
     # Drivers
     labjack_driver = LabJack()
-    motor_driver = MotorController(ip="10.10.100.60", port=5024)
     venus_plc_driver = VenusPLC(VENUSController(read_only=True))
 
-    # Devices
-    scanner_ammeter = BiasedAmmeter(
-        connection=labjack_driver,
-        read_key=LabJack.DataKeys.AIN0,
-        bias_function=POSITIVE_VALUES_ONLY,
-    )
+    async def is_fcv1_out() -> bool:
+        # fcv1_in is True when IN (blocking), False when OUT (clear)
+        return not bool(await venus_plc_driver.read_data(VenusPLC.DataKeys.FARADAY_CUP_IN))
+
+    motor_driver = MotorController(ip="10.10.100.60", port=5002)
+
+    if args.scale_factor is not None:
+        # Voltage-mode: instrument reads voltage; scale_factor converts V → A (or desired units).
+        keithley_driver = Keithley.connect_at_usb(
+            resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR",
+            aperture_time=1e-3,
+            mode=SCPIDriver.MeasurementMode.VOLTAGE,
+        )
+        scanner_ammeter = BiasedAmmeter(
+            connection=keithley_driver,
+            read_key=Keithley.DataKeys.VOLTAGE,
+            bias_function=SCALE_VALUE(args.scale_factor),
+        )
+    else:
+        # Current-mode: default behaviour — clamp negative readings to zero.
+        keithley_driver = Keithley.connect_at_usb(
+            resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", aperture_time=1e-3
+        )
+        scanner_ammeter = BiasedAmmeter(
+            connection=keithley_driver,
+            read_key=Keithley.DataKeys.CURRENT,
+            bias_function=POSITIVE_VALUES_ONLY,
+        )
 
     deflector_v_source = BiasedVoltageSource(
         connection=labjack_driver,
@@ -65,14 +86,18 @@ async def main(args):
 
     scan_parameters = LinearScanParameters(
         axis=Axis.VenusX,
-        position_min=-10,
-        position_max=10,
+        position_min=-2,
+        position_max=2,
         position_step=1.0,
-        divergence_min=-50,
-        divergence_max=50,
-        divergence_step=1.0,
-        samples_per_point=2000,
+        divergence_min=-100,
+        divergence_max=100,
+        divergence_step=50.0,
+        samples_per_point=1,
     )
+
+    if args.centered:
+        _log.info("Motor is already centered")
+        motor_driver._centered[scan_parameters.axis] = True
 
     # Emittance scan
     scan_operation = LinearEmittanceScan(
@@ -80,15 +105,16 @@ async def main(args):
         ammeter=scanner_ammeter,
         deflection_plate_controller=dpc,
         scan_params=scan_parameters,
+        interlock_check=is_fcv1_out,
     )
 
-    result = await scan_operation.run()
-    save_emittance_scan(
-        filepath="scan.h5",
-        data=result,
-        parameters=scan_parameters,
-        additional_metadata={"user": "manual_emittance_scan"},
-    )
+    # result = await scan_operation.run()
+    # save_emittance_scan(
+    #     filepath="scan.h5",
+    #     data=result,
+    #     parameters=scan_parameters,
+    #     additional_metadata={"user": "manual_emittance_scan"},
+    # )
 
     _log.info("--- Scan Configuration Summary ---")
     _log.info(f"               Axis: {scan_parameters.axis.name}")
@@ -113,8 +139,37 @@ async def main(args):
 
     _log.info("User confirmed. Starting scan...")
     try:
-        results = await scan_operation.run()
+        await keithley_driver.connect()
+
+        if args.scale_factor is not None:
+            # Voltage Mode setup
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_AUTOZERO_OFF)
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_DELAY_DISABLE)
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_AUTO_RANGE_OFF)
+            await keithley_driver.send_silent_command(
+                SCPIDriver.Commands.set_voltage_range(100e-3)
+            )
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
+        else:
+            # Current Mode setup
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_OFF)
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.CURRENT_DELAY_DISABLE)
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.CURRENT_AUTO_RANGE_OFF)
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.set_range(10e-6))
+            await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
+
+        try:
+            results = await scan_operation.run(keep_centered=False)
+        except InterlockError as e:
+            _log.error(f"Scan aborted: {e}")
+            return
         _log.info("Scan completed successfully.")
+        save_emittance_scan(
+            filepath="scan.h5",
+            data=results,
+            parameters=scan_parameters,
+            additional_metadata={"user": "manual_emittance_scan"},
+        )
 
         if args.output:
             _log.info(f"Saving results matrix to {args.output}")
@@ -124,8 +179,8 @@ async def main(args):
             _log.info("Scan results (shape {}):".format(results.shape))
             print(results)
 
-    except Exception as e:
-        _log.error(f"An error occurred during the scan: {e}", exc_info=True)
+    finally:
+        await keithley_driver.disconnect()
 
 
 if __name__ == "__main__":
@@ -138,10 +193,26 @@ if __name__ == "__main__":
         help="Optional path to save the resulting data matrix as a CSV file.",
     )
     parser.add_argument(
+        "--scale-factor",
+        type=float,
+        default=None,
+        help=(
+            "If provided, the Keithley is placed in VOLTAGE measurement mode and each "
+            "raw voltage reading is multiplied by this factor (e.g. to convert V → A). "
+            "When omitted the instrument defaults to CURRENT mode with POSITIVE_VALUES_ONLY."
+        ),
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
         help="Enable verbose DEBUG level logging.",
+    )
+    parser.add_argument(
+        "-c",
+        "--centered",
+        action="store_true",
+        help="Drive is already centered",
     )
 
     args = parser.parse_args()

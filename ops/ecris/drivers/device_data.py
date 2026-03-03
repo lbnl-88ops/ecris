@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, Set
 from functools import cached_property
+from typing import Dict, List, Set, Tuple
 
 
 @dataclass

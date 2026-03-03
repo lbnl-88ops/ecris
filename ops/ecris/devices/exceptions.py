@@ -4,3 +4,6 @@ class DeviceError(RuntimeError):
 
 class DeviceMalfunctionError(DeviceError):
     pass
+
+class InterlockError(RuntimeError):
+    pass

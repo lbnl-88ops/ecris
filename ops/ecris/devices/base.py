@@ -1,6 +1,6 @@
 from logging import getLogger
 
-from ops.ecris.drivers.base import DataSource, Connectable
+from ops.ecris.drivers.base import Connectable, DataSource
 
 _log = getLogger(__name__)
 

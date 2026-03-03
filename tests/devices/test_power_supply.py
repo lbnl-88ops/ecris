@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from ops.ecris.devices.power_supply import BiasedVoltageSource
 from ops.ecris.devices.deflection_plate_controller import LABJACK_DEFLECTION_PLATE_BIAS
+from ops.ecris.devices.power_supply import BiasedVoltageSource
 from ops.ecris.drivers.labjack import LabJack
 
 

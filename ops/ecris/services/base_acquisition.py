@@ -5,8 +5,8 @@ from logging import getLogger
 from typing import Any
 
 from ops.ecris.data.producer_thread import producer_thread
-from ops.ecris.drivers.telnet_driver import TelnetDriver
 from ops.ecris.drivers.measurement import Measurement
+from ops.ecris.drivers.telnet_driver import TelnetDriver
 
 _log = getLogger(__name__)
 

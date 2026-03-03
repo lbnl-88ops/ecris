@@ -1,6 +1,7 @@
+from unittest.mock import patch
+
 import pytest
 from pytest import approx
-from unittest.mock import patch
 
 from ops.ecris.drivers.labjack import LabJack
 

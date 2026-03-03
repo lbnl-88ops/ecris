@@ -1,8 +1,6 @@
-from imaplib import Commands
-from typing import List, Dict, Any, Tuple
 from enum import Enum, auto
-
-from unittest.mock import call, MagicMock
+from typing import Any, Dict, List, Tuple
+from unittest.mock import call
 
 from ops.ecris.devices.motor_controller_specification import Axis
 from ops.ecris.legacy.mappings import LEGACY_AXIS_MAPPING
