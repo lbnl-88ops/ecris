@@ -3,13 +3,14 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from ops.ecris.drivers.keithley import Keithley
+from pyvisa.resources import MessageBasedResource
 
 
 @pytest.mark.asyncio
 async def test_keithley_visa_connect():
     with patch("pyvisa.ResourceManager") as mock_rm_class:
         mock_rm = mock_rm_class.return_value
-        mock_instrument = MagicMock()
+        mock_instrument = MagicMock(spec=MessageBasedResource)
         mock_rm.open_resource.return_value = mock_instrument
 
         # Identity and test query responses
