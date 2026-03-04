@@ -1,0 +1,38 @@
+[Unit]
+Description=ECRIS Agent — Headless Hardware Daemon (ZeroMQ IPC)
+Documentation=https://github.com/lbnl-88ops/ecris
+After=network.target
+
+[Service]
+Type=simple
+User=work
+WorkingDirectory=/home/work/repos/ops/ecris
+Environment="PYTHONPATH=/home/work/repos"
+
+# ---------------------------------------------------------------------------
+# Headless agent — publishes telemetry on:
+#   ipc:///tmp/ecris_telemetry.ipc  (PUB socket, topic: "telemetry" / "log")
+# Listens for operator commands on:
+#   ipc:///tmp/ecris_command.ipc    (REP socket)
+#
+# The TUI (ecris_tui.py, default IPC mode) connects to these sockets.
+# The --test flag switches to mock drivers and alternate socket paths:
+#   ipc:///tmp/ecris_telemetry_test.ipc
+#   ipc:///tmp/ecris_command_test.ipc
+#
+# To run in production, replace "--test" with the appropriate production
+# entry-point or remove it once full hardware wiring is implemented.
+# ---------------------------------------------------------------------------
+
+# Update the path to python if using a specific virtual environment.
+ExecStart=/usr/bin/env python -m ops.ecris.agents.ecris_agent --test
+
+Restart=on-failure
+RestartSec=5s
+
+# Ensure the IPC socket directory exists and is writable.
+RuntimeDirectory=ecris
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target
