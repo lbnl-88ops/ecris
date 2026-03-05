@@ -84,12 +84,14 @@ class TestEmittanceScan:
         for _ in expected_positions:
             for divergence in expected_divergences:
                 expected_divergence_calls.append(call.set_divergence(divergence))
+        # Reset divergence to 0 at the end
+        expected_divergence_calls.append(call.set_divergence(0))
 
         mock_dpc.set_divergence.assert_has_calls(expected_divergence_calls)
         assert mock_dpc.set_divergence.call_count == len(expected_divergence_calls)
 
         # Ammeter calls
-        expected_read_count = len(expected_divergence_calls) * scan_params.samples_per_point
+        expected_read_count = (len(expected_divergence_calls) - 1) * scan_params.samples_per_point
         assert mock_ammeter.read_current.call_count == expected_read_count
 
         # Check final value
