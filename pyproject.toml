@@ -9,7 +9,6 @@ requires-python = ">=3.11"
 authors = [
     {name = "Jessica Rehak", email = "rehak@lbl.gov"}
 ]
-dynamic = ["version"]
 dependencies = [
     "numpy",
     "matplotlib",
@@ -24,7 +23,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-version = "0.2.2"
+version = "1.0.0"
 packages = [ { include = "ops/ecris" } ]
 
 [tool.poetry.group.dev.dependencies]
