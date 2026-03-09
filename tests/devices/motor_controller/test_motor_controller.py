@@ -1,19 +1,19 @@
-from unittest.mock import MagicMock, mock_open, patch, AsyncMock, call
-import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from ops.ecris.devices import DeviceMalfunctionError
 from ops.ecris.devices.motor_controller import MotorController
 from ops.ecris.devices.motor_controller_specification import (
-    Axis,
-    Commands,
-    PERPENDICULAR_AXIS,
-    Bit,
     MID_POINT_OFFSETS,
+    PERPENDICULAR_AXIS,
+    Axis,
+    Bit,
+    Commands,
 )
-from tests.devices.motor_controller.helpers import set_up_test, MoveSequences, FakeState
-from .helpers import FakeMotorController
+from tests.devices.motor_controller.helpers import FakeState, MoveSequences, set_up_test
 
+from .helpers import FakeMotorController
 
 ALL_AXES = [Axis.VenusX, Axis.VenusY, Axis.AcerX, Axis.AcerY]
 
@@ -34,6 +34,7 @@ def mock_motor_controller_not_connected():
         mock_reader.readuntil = AsyncMock(side_effect=fake_controller.read_buffer)
         mock_writer.is_closing = MagicMock(return_value=False)
         mock_open_conn.return_value = (mock_reader, mock_writer)
+
         controller = MotorController(ip="127.0.0.1", port=9999)
         yield controller, fake_controller, mock_open_conn, mock_sleep
 

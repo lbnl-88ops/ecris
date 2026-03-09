@@ -1,11 +1,11 @@
 import asyncio
-from logging import getLogger
-from typing import Any, Dict, List, Tuple
-from enum import Enum, auto
 import random
+from enum import Enum, auto
+from logging import getLogger
+from typing import Dict, List, Tuple
 
-from ops.ecris.drivers.device_data import DeviceData
 from ops.ecris.drivers import DataSource
+from ops.ecris.drivers.device_data import DeviceData
 
 _log = getLogger(__name__)
 
@@ -64,6 +64,9 @@ VENUS_PLC_DATA_DEFINITIONS = DeviceData(
             ("Puller voltage setpoint", "V", "puller_v_set"),
             ("Robin magnet current", "A", "robin_i"),
             ("Robin magnet current setpoint", "A", "robin_i_set"),
+            ("South (top knob) slit", None, "slit_south"),
+            ("North (bottom know) slit", None, "slit_north"),
+            ("Tuner ID", None, "tuner_number"),
         ],
         "Cryostat": [
             (
@@ -90,6 +93,7 @@ VENUS_PLC_DATA_DEFINITIONS = DeviceData(
                 "percentage",
                 "LHe_level_percent",
             ),
+            ("Liquid helium level", "in", "LHe_level"),
             ("Liquid helium pressure", "psi", "LHe_psi"),
             ("Conduction bar temperature", "K", "seventy_k_cond_bar"),
         ],
@@ -121,6 +125,7 @@ VENUS_PLC_DATA_DEFINITIONS = DeviceData(
             ("Inductive oven frequency", "kHz", "ind_oven_frequency"),
             ("Inductive oven requested current", "A", "ind_oven_req"),
             ("Inductive oven power", "W", "ind_oven_watts"),
+            ("Inductive oven status", "nan", "ind_oven_status"),
             ("Low temperature oven 1 temperature set point", "C", "lt_oven_1_sp"),
             ("Low temperature oven 1 temperature", "C", "lt_oven_1_temp"),
             ("Low temperature oven 2 temperature set point", "C", "lt_oven_2_sp"),
@@ -194,13 +199,35 @@ class VenusPLC(DataSource):
         AVERAGE_CURRENT = auto()
         CURRENT_STDEV = auto()
         BATMAN_CURRENT = auto()
+        BATMAN_I_SET = auto()
         EXTRACTION_VOLTAGE = auto()
+        CSD_REQUEST = auto()
+        CSD_CUSTOM_REQUEST = auto()
+        CSD_IN_PROGRESS = auto()
+        CSD_CUSTOM_IN_PROGRESS = auto()
+        CSD_MQ_MIN = auto()
+        CSD_MQ_MAX = auto()
+        CSD_NUM_POINTS = auto()
+        FARADAY_CUP_IN = auto()
+        PEAKING_REQUEST = auto()
+        PEAKING_IN_PROGRESS = auto()
 
     _PLC_KEYS: Dict[DataKeys, str] = {
         DataKeys.AVERAGE_CURRENT: "fcv1_ammeter",
         DataKeys.CURRENT_STDEV: "fcv1_ammeter_stdev",
         DataKeys.BATMAN_CURRENT: "batman_i",
+        DataKeys.BATMAN_I_SET: "batman_i_set",
         DataKeys.EXTRACTION_VOLTAGE: "extraction_v",
+        DataKeys.CSD_REQUEST: "csd_request",
+        DataKeys.CSD_CUSTOM_REQUEST: "csd_custom_request",
+        DataKeys.CSD_IN_PROGRESS: "csd_in_progress",
+        DataKeys.CSD_CUSTOM_IN_PROGRESS: "csd_custom_in_progress",
+        DataKeys.CSD_MQ_MIN: "csd_MQ_min",
+        DataKeys.CSD_MQ_MAX: "csd_MQ_max",
+        DataKeys.CSD_NUM_POINTS: "num_csd_points",
+        DataKeys.FARADAY_CUP_IN: "fcv1_in",
+        DataKeys.PEAKING_REQUEST: "peaking_request",
+        DataKeys.PEAKING_IN_PROGRESS: "peaking_in_progress",
     }
 
     def __init__(self, venus_controller: VENUSController):

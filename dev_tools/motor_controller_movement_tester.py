@@ -1,9 +1,8 @@
-from argparse import ArgumentParser
 import asyncio
 import logging
-from typing import Any
+from argparse import ArgumentParser
 
-from ops.ecris.devices.motor_controller import MotorController, Axis, DeviceMalfunctionError
+from ops.ecris.devices.motor_controller import Axis, DeviceMalfunctionError, MotorController
 
 _log = logging.getLogger("ops")
 
@@ -71,6 +70,7 @@ async def _parse_and_execute(controller: MotorController, user_input: str):
 
 async def run_interactive_test(host: str, port: int):
     """Connects to the controller and runs the interactive command loop."""
+
     controller = MotorController(ip=host, port=port)
     try:
         _log.info(f"Attempting to connect to motor controller at {host}:{port}...")

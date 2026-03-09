@@ -3,14 +3,15 @@
 author: SBModre
 """
 
-import numpy as np
-import time
-from labjack import ljm
-import matplotlib.pyplot as plt
-from datetime import datetime
 import json
 import re
+import time
+from datetime import datetime
+
+import matplotlib.pyplot as plt
+import numpy as np
 import telnetlib3 as telnetlib
+from labjack import ljm
 
 
 class FatalError(Exception):  # just to later raise a custom Error
@@ -252,7 +253,7 @@ class Motor:
         if not self.tn:
             try:
                 self.tn = telnetlib.Telnet("10.10.100.60", 5002, timeout=3)
-            except:
+            except Exception:
                 raise TimeoutError("Cannot open Communication")
         else:
             pass
@@ -398,7 +399,7 @@ class Motor:
                 )  # if float output, it is always in last line of response. However read_very_eager also reads next prompt line as response, so output is on second to last line
                 print(output)
                 return output
-            except:
+            except ValueError:
                 return None
 
     def axis_clear(self, axis):
@@ -420,7 +421,7 @@ class Motor:
         if type(axis) is not int:
             try:
                 axis = int(axis)
-            except:
+            except ValueError:
                 raise TypeError("Axis has to be int or float!")  # (0,1,2,3)
         other_axis = [1, 0, 3, 2][
             axis
@@ -566,7 +567,7 @@ class Read_and_Analyze:
         )  # this is output from labjack which is amplified bz a factor of 100
         m = len(V)
         n = len(position)
-        I = np.zeros((m, n))
+        current_matrix = np.zeros((m, n))
         handle = ljm.openS("T8", "usb", "ANY")
         output = "DAC1"  #!!!
         Input = "AIN0"  #!!!
@@ -590,8 +591,8 @@ class Read_and_Analyze:
                     )  # LabView Program took 2000 samples at a sampling rate of 1000000S/s, so 0.02s in between samples
                 current *= -1 / 2000  # minus because of inverting output on keithley 428
                 current = (abs(I_) + I_) / 2  # turns negative currents to 0 (non physical; noise)
-                I_ = np.append(I, current)  # append the everage current
-            I[:, i] = I_  # columns = position, rows = Voltage
+                I_ = np.append(current_matrix, current)  # append the everage current
+            current_matrix[:, i] = I_  # columns = position, rows = Voltage
         ljm.close(handle)
         variables = {
             "Maximal x' [mrad]": self.Var.xp_max,
@@ -611,7 +612,7 @@ class Read_and_Analyze:
             "y Step Size [mm]": self.Var.y_step,
         }
         Date_Time = datetime.now().strftime("%Y-%m-%d %Hh%Mm%Ss")
-        E, A, B, G = self.emittance(axis, I)
+        E, A, B, G = self.emittance(axis, current_matrix)
         file_name = (
             "Emittance_Scanner_Data_"
             + Date_Time
@@ -632,7 +633,7 @@ class Read_and_Analyze:
             f.write("\nVoltage Array: \n")
             json.dump(V.tolist(), f)
             f.write("\nCurrent Matrix: \n")
-            json.dump(I.tolist(), f)
+            json.dump(current_matrix.tolist(), f)
             f.write("\nRMS Emittance: \n")
             f.write(str(E))
             f.write("\nTwiss Parameter Alpha: \n")
@@ -641,7 +642,7 @@ class Read_and_Analyze:
             f.write(str(B))
             f.write("\nTwiss Parameter Gamma: \n")
             f.write(str(G))
-        return I, file_name
+        return current_matrix, file_name
 
     def emittance(self, axis, I):
         """
@@ -713,14 +714,14 @@ class Read_and_Analyze:
                 if i >= 2 and i % 2 == 1:
                     try:
                         data.append(json.loads(line))
-                    except:
+                    except ValueError:
                         data.append(line.strip())
 
         beam_line = data[0]
         axis = data[1]
         position = np.array(data[2])  # unit to mm
         momentum = np.array(data[3])  # unit to mrad
-        I = np.array(data[5]) * 1e9  # unit nA
+        current_matrix = np.array(data[5]) * 1e9  # unit nA
         theta = np.linspace(0, 2 * np.pi, 100)
         E_rms = float(data[6]) * 1e6  # convert to mm mrad
         A = float(data[7])
@@ -732,11 +733,11 @@ class Read_and_Analyze:
         img_filename = (
             filename.strip("txt") + "jpeg"
         )  # create valid format for picture with same name as the data
-        m, n = I.shape
+        m, n = current_matrix.shape
         binlength_position = (max(position) - min(position)) / n
         binlength_momentum = (max(momentum) - min(momentum)) / m
         plt.imshow(
-            I,
+            current_matrix,
             cmap="inferno",
             origin="lower",
             extent=(
@@ -906,7 +907,7 @@ def main():
                 else:
                     pass
                 break
-            except:
+            except ValueError:
                 continue
     M = Motor()
     while True:
@@ -916,7 +917,7 @@ def main():
                 == input("Do you want to load and plot existing Measuremnts? (yes or no): ")
             )[0].item()
             break
-        except:
+        except ValueError:
             print("Undefined Input. Try Again")
     if plot_data:
         while True:
@@ -930,20 +931,20 @@ def main():
                         if i % 2 == 1:
                             try:
                                 data.append(json.loads(line))
-                            except:
+                            except ValueError:
                                 data.append(line.strip())
                 dic = data[0]
                 for row, (var_label, var_name, var_value) in enumerate(variables_dict):
                     setattr(V, var_name, dic[var_label])
                 axis = data[2]
                 beam_line = data[1]
-                I = np.array(data[6])
+                current_matrix = np.array(data[6])  # noqa: F841
                 RnA = Read_and_Analyze(V, M)
                 beam_line = np.where(np.array(["VENUS", "AECR"]) == beam_line)[0].item()
                 axis = np.where(np.array(["X", "Y", "X", "Y"]) == axis)[0][beam_line].item()
                 RnA.phase_space_plot(data_file)
                 return
-            except:
+            except Exception:
                 while True:
                     try:
                         again = np.where(
@@ -953,7 +954,7 @@ def main():
                             )
                         )[0].item()
                         break
-                    except:
+                    except ValueError:
                         print("Invalid Input.")
                         continue
                 if again:
@@ -970,19 +971,19 @@ def main():
             V.x_max = max(50, V.x_max)
             V.y_min = max(50, V.y_max)
             break
-        except:
+        except (ValueError, IndexError):
             print("Unknown beam line. Try Again")
     while True:
         try:
             x_scans = int(input("Enter the Number of Scans on the x-Axis: "))
             break
-        except:
+        except ValueError:
             continue
     while True:
         try:
             y_scans = int(input("Enter the Number of Scans on the y-Axis: "))
             break
-        except:
+        except ValueError:
             continue
     while True:
         try:
@@ -1002,15 +1003,14 @@ def main():
     axis = [0, 2][M.beam_line]
     M.centering(axis)
     for i in range(x_scans):
-        I, filename = RnA.get_current(axis)
+        _current_matrix, filename = RnA.get_current(axis)
         RnA.phase_space_plot(filename)
     M.move_out(axis)
     input("When ready to start y-Axis Scans, hit Enter")
     axis = [1, 3][M.beam_line]
     M.centering(axis)
     for i in range(y_scans):
-        I, filename = RnA.get_current(axis)
+        _current_matrix, filename = RnA.get_current(axis)
         RnA.phase_space_plot(filename)
     M.move_out(axis)
     M.tn.close()
-

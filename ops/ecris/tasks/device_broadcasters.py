@@ -1,5 +1,5 @@
-from ops.ecris.drivers.venus_plc import VenusPLC
 from ops.ecris.drivers.measurement import AverageMeasurement
+from ops.ecris.drivers.venus_plc import VenusPLC
 
 
 async def update_plc_average_current(venus_plc: VenusPLC, current: AverageMeasurement) -> None:

@@ -1,7 +1,9 @@
 import asyncio
+from ipaddress import IPv4Address, IPv6Address, ip_address
 from logging import getLogger
-from ipaddress import IPv6Address, ip_address, IPv4Address
-from telnetlib3 import open_connection, TelnetReader, TelnetWriter
+from typing import Any
+
+from telnetlib3 import TelnetReader, TelnetWriter, open_connection
 
 from .base import SessionDriver
 
@@ -9,6 +11,14 @@ _log = getLogger(__name__)
 
 
 class TelnetDriver(SessionDriver):
+    """
+    Driver for communicating with devices over Telnet.
+
+    This driver handles the underlying TCP connection, reading, and writing of data
+    using the Telnet protocol. It supports configurable prompts, encodings, and
+    command terminators.
+    """
+
     def __init__(
         self,
         id: str = "TelnetDevice",
@@ -62,6 +72,12 @@ class TelnetDriver(SessionDriver):
     def _host(self) -> str:
         return f"{self._ip}:{self._port}"
 
+    async def read_data(self, data_key: Any) -> float:
+        raise NotImplementedError("Subclasses must implement read_data")
+
+    async def write_data(self, data_key: Any, value: float) -> None:
+        raise NotImplementedError("Subclasses must implement write_data")
+
     async def connect(self) -> None:
         async with self._connection_lock:
             host = self._host
@@ -79,8 +95,7 @@ class TelnetDriver(SessionDriver):
                 )
                 _log.debug("Connected, performing handshake...")
                 await self._handshake()
-                _log.debug("Handshake complete, performing setup...")
-                await self._setup()
+                _log.debug("Handshake complete.")
                 # _log.debug(f"Awaiting initial response, expected prompt = {self._prompt}")
                 # response = await asyncio.wait_for(self._read_until(self._prompt), 1.0)
                 # _log.info(f"Successfully connected to {host}, response: {response}.")
@@ -111,14 +126,19 @@ class TelnetDriver(SessionDriver):
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot write.")
         encoded_command = (command + self._command_terminator).encode(self.encoding)
+        _log.debug(f"Writing command {encoded_command!r}")
         self._writer.write(encoded_command)
+        _log.debug("Draining buffer")
         await self._writer.drain()
+        _log.debug("Buffer drained")
 
     async def _read_until(self, separator: str = "\n") -> str:
         if not self.is_connected:
             raise ConnectionError("Device is not connected. Cannot read.")
         try:
+            _log.debug(f"Awaiting read to terminator {separator.encode(self.encoding)!r}")
             raw_bytes = await self._reader.readuntil(separator.encode(self.encoding))
+            _log.debug(f"Raw response {raw_bytes[:20]!r}" + "..." if len(raw_bytes) > 20 else "")
             response = raw_bytes.decode(self.encoding)
             if self._prompt is not None:
                 response = response.removeprefix(self._prompt)

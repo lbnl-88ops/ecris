@@ -1,13 +1,13 @@
-# test_keysight_pytest.py
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock, call
 
-from ops.ecris.drivers.keithley import Keysight
+from ops.ecris.drivers.keithley import Keithley
+from ops.ecris.drivers.scpi_driver import SCPIDriver
 
 
 @pytest.fixture
-def mock_keysight_connection():
+def mock_keithley_connection():
     with patch("ops.ecris.drivers.telnet_driver.open_connection") as mock_open_conn:
         mock_reader = AsyncMock()
         mock_writer = AsyncMock()
@@ -15,36 +15,45 @@ def mock_keysight_connection():
         mock_writer.is_closing = MagicMock(return_value=False)
         mock_open_conn.return_value = (mock_reader, mock_writer)
 
-        keysight = Keysight(read_frequency_per_min=60, ip="127.0.0.1", port=9999)
+        keithley = Keithley.connect_at_ip(ip="127.0.0.1", port=9999, aperture_time=0.0166)
 
-        yield keysight, mock_reader, mock_writer, mock_open_conn
+        yield keithley, mock_reader, mock_writer, mock_open_conn
 
 
 @pytest.mark.asyncio
-async def test_connect_sends_correct_commands(mock_keysight_connection):
-    keysight, mock_reader, mock_writer, mock_open_conn = mock_keysight_connection
-    expected_nplc = 1.0
+async def test_connect_sends_correct_commands(mock_keithley_connection):
+    keithley, mock_reader, mock_writer, mock_open_conn = mock_keithley_connection
+    expected_aperture = 0.0166
+    handshake_commands = [
+        "*lang scpi",
+        ":trace:clear",
+        "*tst?",
+        "*idn?",
+    ]
+
+    handshake_return_values = ["0\r\n", "KEITHLEY INSTRUMENTS,MODEL DMM7512,04684146,1.7.16a\r\n"]
+    reset_command = ["*rst"]
+
     setup_commands = [
-        "*rst",
         ':sens:func "curr"',
         ":sens:curr:rang:auto on",
-        ":sens:curr:nplc:auto off",
-        f":sens:curr:nplc {expected_nplc}",
-        ":inp on",
+        ":sens:curr:delay:auto off",
+        f":sens:curr:aper {expected_aperture}",
     ]
-    banner = "Welcome to Keysight B2900A Series.\r\nB2900A> "
-    read_until_effects = [f"{s}\r\nB2900A> ".encode("ascii") for s in [banner] + setup_commands]
+    read_until_effects = [v.encode("ascii") for v in handshake_return_values]
 
     mock_reader.readuntil.side_effect = read_until_effects
 
     with patch("asyncio.sleep") as mock_sleep:
-        await keysight.connect()
-        mock_sleep.assert_awaited_once_with(2.0)
+        await keithley.connect()
+        assert mock_sleep.await_count == 2
+        mock_sleep.assert_has_awaits([call(2.0), call(5.0)])
 
     mock_open_conn.assert_awaited_once_with("127.0.0.1", 9999, encoding=False)
+    all_commands = handshake_commands + reset_command + setup_commands
 
-    expected_write_calls = [call(f"{c}\r\n".encode("ascii")) for c in setup_commands]
-    expected_readuntil_calls = [call("B2900A>".encode("ascii")) for _ in read_until_effects]
+    expected_write_calls = [call(f"{c}\r\n".encode("ascii")) for c in all_commands]
+    expected_readuntil_calls = [call("\n".encode("ascii")) for _ in read_until_effects]
 
     mock_writer.write.assert_has_calls(expected_write_calls)
     mock_reader.readuntil.assert_has_calls(expected_readuntil_calls)
@@ -53,18 +62,111 @@ async def test_connect_sends_correct_commands(mock_keysight_connection):
 
 
 @pytest.mark.asyncio
-async def test_read_data_sends_command_and_parses_response(mock_keysight_connection):
-    keysight, mock_reader, mock_writer, _ = mock_keysight_connection
-    keysight._reader = mock_reader
-    keysight._writer = mock_writer
+async def test_handshake_retry_on_tst_failure_success(mock_keithley_connection):
+    keithley, mock_reader, mock_writer, _ = mock_keithley_connection
+    keithley._backend._reader = mock_reader
+    keithley._backend._writer = mock_writer
+
+    # "1" initially, then "0" on retry, then "KEITHLEY..." for *idn?
+    handshake_return_values = ["1\r\n", "0\r\n", "KEITHLEY INSTRUMENTS\r\n"]
+    mock_reader.readuntil.side_effect = [v.encode("ascii") for v in handshake_return_values]
+
+    with patch.object(keithley, "send_silent_command", new_callable=AsyncMock) as mock_silent:
+        await keithley._handshake()
+
+    assert mock_writer.write.call_count == 3
+    mock_writer.write.assert_has_calls([call(b"*tst?\r\n"), call(b"\n\r\n"), call(b"*idn?\r\n")])
+
+
+@pytest.mark.asyncio
+async def test_handshake_retry_on_tst_failure_raises(mock_keithley_connection):
+    keithley, mock_reader, mock_writer, _ = mock_keithley_connection
+    keithley._backend._reader = mock_reader
+    keithley._backend._writer = mock_writer
+
+    # "1" initially, then "1" on retry
+    handshake_return_values = ["1\r\n", "1\r\n"]
+    mock_reader.readuntil.side_effect = [v.encode("ascii") for v in handshake_return_values]
+
+    with patch.object(keithley, "send_silent_command", new_callable=AsyncMock):
+        with pytest.raises(ConnectionError, match="Handshake failed, response: 1"):
+            await keithley._handshake()
+
+
+@pytest.mark.asyncio
+async def test_handshake_idn_list(mock_keithley_connection):
+    keithley, mock_reader, mock_writer, _ = mock_keithley_connection
+    keithley._backend._reader = mock_reader
+    keithley._backend._writer = mock_writer
+
+    with patch.object(keithley, "send_silent_command", new_callable=AsyncMock):
+        with patch.object(keithley, "send_command", new_callable=AsyncMock) as mock_send:
+            mock_send.side_effect = ["0", ["KEITHLEY", "MODEL", "DMM7512"]]
+            await keithley._handshake()
+
+
+@pytest.mark.asyncio
+async def test_connect_voltage_mode_sends_correct_commands():
+    with patch("ops.ecris.drivers.telnet_driver.open_connection") as mock_open_conn:
+        mock_reader = AsyncMock()
+        mock_writer = AsyncMock()
+        mock_writer.write = MagicMock()
+        mock_writer.is_closing = MagicMock(return_value=False)
+        mock_open_conn.return_value = (mock_reader, mock_writer)
+
+        keithley = Keithley.connect_at_ip(
+            ip="127.0.0.1",
+            port=9999,
+            aperture_time=0.0166,
+            mode=SCPIDriver.MeasurementMode.VOLTAGE,
+        )
+
+    expected_aperture = 0.0166
+    handshake_return_values = ["0\r\n", "KEITHLEY INSTRUMENTS,MODEL DMM7512,04684146,1.7.16a\r\n"]
+    mock_reader.readuntil.side_effect = [v.encode("ascii") for v in handshake_return_values]
+
+    with patch("ops.ecris.drivers.telnet_driver.open_connection") as mock_open_conn2:
+        mock_open_conn2.return_value = (mock_reader, mock_writer)
+        with patch("asyncio.sleep"):
+            await keithley.connect()
+
+    voltage_setup_commands = [
+        SCPIDriver.Commands.VOLTAGE_FUNCTION,
+        SCPIDriver.Commands.VOLTAGE_AUTO_RANGE,
+        SCPIDriver.Commands.VOLTAGE_DELAY_DISABLE,
+        SCPIDriver.Commands.VOLTAGE_SET_APERATURE.format(expected_aperture),
+    ]
+
+    written_commands = [
+        call_args[0][0].decode("ascii").strip() for call_args in mock_writer.write.call_args_list
+    ]
+
+    for cmd in voltage_setup_commands:
+        assert cmd in written_commands, f"Expected voltage command not sent: {cmd!r}"
+
+    current_setup_commands = [
+        SCPIDriver.Commands.CURRENT_FUNCTION,
+        SCPIDriver.Commands.CURRENT_AUTO_RANGE,
+        SCPIDriver.Commands.CURRENT_DELAY_DISABLE,
+        SCPIDriver.Commands.CURRENT_SET_APERATURE.format(expected_aperture),
+    ]
+    for cmd in current_setup_commands:
+        assert cmd not in written_commands, f"Unexpected current command was sent: {cmd!r}"
+
+
+@pytest.mark.asyncio
+async def test_read_data_sends_command_and_parses_response(mock_keithley_connection):
+    keithley, mock_reader, mock_writer, _ = mock_keithley_connection
+    keithley._backend._reader = mock_reader
+    keithley._backend._writer = mock_writer
     command = "meas:curr?"
 
-    mock_reader.readuntil.return_value = "meas:curr?\r\n  1.2345E-05\r\nB2900A> ".encode("ascii")
+    mock_reader.readuntil.return_value = "1.2345E-05\r\n".encode("ascii")
 
-    data = await keysight.read_data(Keysight.DataKeys.CURRENT)
+    data = await keithley.read_data(keithley.DataKeys.CURRENT)
 
     mock_writer.write.assert_called_once_with(f"{command}\r\n".encode("ascii"))
-    mock_reader.readuntil.assert_awaited_once_with("B2900A>".encode("ascii"))
+    mock_reader.readuntil.assert_awaited_once_with("\n".encode("ascii"))
 
     expected_data = 1.2345e-05
     assert data == pytest.approx(expected_data)

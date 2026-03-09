@@ -1,6 +1,6 @@
 import asyncio
 import functools
-from typing import Callable, Any
+from typing import Any, Callable
 
 
 def with_lock_named(lock_name: str) -> Callable:

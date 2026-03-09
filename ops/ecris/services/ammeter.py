@@ -1,9 +1,11 @@
 import asyncio
-from logging import getLogger
 import time
+from logging import getLogger
+
 from ops.ecris.devices import Ammeter
-from ops.ecris.drivers.telnet_driver import TelnetDriver
 from ops.ecris.drivers.measurement import ValueMeasurement
+from ops.ecris.drivers.telnet_driver import TelnetDriver
+
 from .base_acquisition import TelnetDataAcquisitionService
 from .distributor import DataDistributor
 from .processors import AveragingProcessor

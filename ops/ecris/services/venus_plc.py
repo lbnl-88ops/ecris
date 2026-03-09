@@ -1,11 +1,13 @@
 import asyncio
-from logging import getLogger
-import time
-from ops.ecris.data.producer_thread import producer_thread
-from .base_acquisition import BaseAquisitionService
-from ops.ecris.drivers.venus_plc import VenusPLC
-from ops.ecris.drivers.measurement import MultiValueMeasurement
 import threading
+import time
+from logging import getLogger
+
+from ops.ecris.data.producer_thread import producer_thread
+from ops.ecris.drivers.measurement import MultiValueMeasurement
+from ops.ecris.drivers.venus_plc import VenusPLC
+
+from .base_acquisition import BaseAquisitionService
 
 _log = getLogger(__name__)
 
@@ -24,7 +26,7 @@ class PLCDataAquisitionService(BaseAquisitionService):
             target=producer_thread,
             args=(self._loop, self._data_queue, self._acquire_data),
             daemon=True,
-            name=f"VENUSPLCData_Producer",
+            name="VENUSPLCData_Producer",
         )
         self._producer_thread.start()
         self._is_running = True

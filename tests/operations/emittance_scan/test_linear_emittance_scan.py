@@ -1,13 +1,13 @@
-import pytest
-import numpy as np
-from unittest.mock import AsyncMock, call, MagicMock
+from unittest.mock import AsyncMock, call
 
-from ops.ecris.operations.emittance_scan.base import LinearEmittanceScan
-from ops.ecris.operations.emittance_scan.parameters import LinearScanParameters
-from ops.ecris.devices.motor_controller import MotorController
+import numpy as np
+import pytest
+
 from ops.ecris.devices.ammeter import Ammeter
-from ops.ecris.devices.motor_controller_specification import Axis
 from ops.ecris.devices.deflection_plate_controller import DeflectionPlateController
+from ops.ecris.devices.motor_controller import MotorController
+from ops.ecris.devices.motor_controller_specification import Axis
+from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
 
 
 @pytest.fixture
@@ -69,6 +69,10 @@ class TestEmittanceScan:
         result_matrix = await scan_operation.run()
 
         # Motor calls
+        for mock in [mock_motor, mock_ammeter, mock_dpc]:
+            mock.connect.assert_awaited_once()
+            mock.disconnect.assert_awaited_once()
+
         expected_motor_calls = [
             call.move_to_position(scan_params.axis, pos) for pos in expected_positions
         ]
@@ -80,12 +84,14 @@ class TestEmittanceScan:
         for _ in expected_positions:
             for divergence in expected_divergences:
                 expected_divergence_calls.append(call.set_divergence(divergence))
+        # Reset divergence to 0 at the end
+        expected_divergence_calls.append(call.set_divergence(0))
 
         mock_dpc.set_divergence.assert_has_calls(expected_divergence_calls)
         assert mock_dpc.set_divergence.call_count == len(expected_divergence_calls)
 
         # Ammeter calls
-        expected_read_count = len(expected_divergence_calls) * scan_params.samples_per_point
+        expected_read_count = (len(expected_divergence_calls) - 1) * scan_params.samples_per_point
         assert mock_ammeter.read_current.call_count == expected_read_count
 
         # Check final value

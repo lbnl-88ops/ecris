@@ -1,8 +1,10 @@
 from logging import getLogger
-from typing import Any, Callable
+from typing import Any
 
 from ops.ecris.drivers import DataSource
+
 from .base import _LogicalDeviceBase
+from .biases import BiasFunction
 
 _log = getLogger(__name__)
 
@@ -32,11 +34,36 @@ class PowerSupply(Voltmeter, VoltageSource):
 
 
 class BiasedVoltageSource(VoltageSource):
-    def __init__(
-        self, connection: DataSource, set_key: Any, bias_function: Callable[[float], float]
-    ):
+    def __init__(self, connection: DataSource, set_key: Any, bias_function: BiasFunction):
         super().__init__(connection, set_key)
         self._bias_function = bias_function
 
     async def set_voltage(self, voltage: float) -> None:
         return await super().set_voltage(self._bias_function(voltage))
+
+
+class CurrentSource(_LogicalDeviceBase):
+    def __init__(self, connection: DataSource, set_key: Any):
+        super().__init__(connection)
+        self._set_key = set_key
+
+    async def set_current(self, current: float) -> None:
+        await self._connection.write_data(self._set_key, current)
+
+
+class BiasedCurrentSource(CurrentSource):
+    def __init__(self, connection: DataSource, set_key: Any, bias_function: BiasFunction):
+        super().__init__(connection, set_key)
+        self._bias_function = bias_function
+
+    async def set_current(self, current: float) -> None:
+        return await super().set_current(self._bias_function(current))
+
+
+class BiasedVoltmeter(Voltmeter):
+    def __init__(self, connection: DataSource, read_key: Any, bias_function: BiasFunction):
+        super().__init__(connection, read_key)
+        self._bias_function = bias_function
+
+    async def read_voltage(self) -> float:
+        return self._bias_function(await super().read_voltage())

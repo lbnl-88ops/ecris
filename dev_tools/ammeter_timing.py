@@ -1,17 +1,17 @@
+import argparse
 import asyncio
 import logging
-import argparse
-import telnetlib3
 import time
-import numpy as np
 from typing import List
-import matplotlib.pyplot as plt
+
+import numpy as np
+import telnetlib3
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 _log = logging.getLogger(__name__)
 
-PROMPT = b'B2900A> ' 
-SEPARATOR = b'\r\n' 
+PROMPT = b'B2900A> '
+SEPARATOR = b'\r\n'
 
 def parse_response(response: bytes) -> List[str]:
     lines = [r.removeprefix(PROMPT).decode('ascii').strip() for r in response.split(SEPARATOR)]
@@ -34,15 +34,15 @@ async def run_timing_test(reader, writer, command: str, nplc: float, iterations:
     command_bytes = f"{command}\r\n".encode('ascii')
     times = []
     values = []
-    
+
     for i in range(iterations):
-        start_time = time.perf_counter() 
+        start_time = time.perf_counter()
 
         writer.write(command_bytes)
         await writer.drain()
 
         full_response = await reader.readuntil(PROMPT)
-        
+
         end_time = time.perf_counter()
         duration = end_time - start_time
         times.append(duration)
@@ -74,7 +74,7 @@ async def ammeter_interface(host: str, port: int):
     reader, writer = await telnetlib3.open_connection(host, port, encoding=False)
     initial_output = await reader.readuntil(PROMPT)
     _log.info("Connected and synchronized with prompt.")
-    _log.info(f"--- Banner ---\n" + '\n'.join(parse_response(initial_output)) + "\n--------------")
+    _log.info("--- Banner ---\n" + '\n'.join(parse_response(initial_output)) + "\n--------------")
 
     for command in [
         ':sens:func "curr"',
@@ -84,7 +84,7 @@ async def ammeter_interface(host: str, port: int):
         writer.write(f"{command}\r\n".encode('ascii'))
         await writer.drain()
         response = await reader.readuntil(PROMPT) # Consume the prompt after setup
-        _log.info(f"Setup command response: " + '\n'.join(parse_response(response)))
+        _log.info("Setup command response: " + '\n'.join(parse_response(response)))
 
     _log.info("Configuration complete.")
 

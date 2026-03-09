@@ -1,20 +1,9 @@
-from logging import getLogger
-from typing import Any, Callable
+from typing import Any
 
 from ops.ecris.drivers import DataSource
+
 from .base import _LogicalDeviceBase
-
-
-def POSITIVE_VALUES_ONLY(current: float) -> float:
-    return max(0, current)
-
-
-def INVERT_VALUES(current: float) -> float:
-    return -current
-
-
-def POSITIVE_VALUES_ONLY_AFTER_INVERSION(current: float) -> float:
-    return POSITIVE_VALUES_ONLY(INVERT_VALUES(current))
+from .biases import BiasFunction
 
 
 class Ammeter(_LogicalDeviceBase):
@@ -28,9 +17,16 @@ class Ammeter(_LogicalDeviceBase):
 
 
 class BiasedAmmeter(Ammeter):
-    def __init__(
-        self, connection: DataSource, read_key: Any, bias_function: Callable[[float], float]
-    ):
+    """An ammeter that applies a bias function to each raw reading.
+
+    Commonly used with ``DataKeys.VOLTAGE`` (e.g. from an SCPI driver) when the
+    physical current signal is represented as a voltage on the instrument.  In
+    that case supply a ``bias_function`` such as ``SCALE_VALUE(factor)`` from
+    ``ops.ecris.devices.biases`` to convert the raw voltage reading into the
+    desired engineering units before the value is returned by ``read_current``.
+    """
+
+    def __init__(self, connection: DataSource, read_key: Any, bias_function: BiasFunction):
         super().__init__(connection, read_key)
         self._bias_function = bias_function
 

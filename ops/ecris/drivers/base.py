@@ -44,4 +44,11 @@ class Connectable(ABC):
 
 
 class SessionDriver(Connectable, DataSource):
+    """
+    Abstract base class combining connectable session management and data source capabilities.
+
+    This class inherits from both Connectable and DataSource, providing an interface
+    for devices that require an active connection session to read and write data.
+    """
+
     pass

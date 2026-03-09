@@ -1,13 +1,13 @@
 import asyncio
 from enum import Enum, auto
 from logging import getLogger
-from typing import Any, Dict
+from typing import Dict
 
 from labjack import ljm
 
-from .base import SessionDriver
 from ops.ecris.utilities.decorators import with_lock_named
-from ops.ecris.drivers.device_data import DeviceData
+
+from .base import SessionDriver
 
 _log = getLogger(__name__)
 

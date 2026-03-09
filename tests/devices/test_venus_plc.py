@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from ops.ecris.drivers.venus_plc import VenusPLC
 
 
