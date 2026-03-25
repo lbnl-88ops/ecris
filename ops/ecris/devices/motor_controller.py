@@ -1,4 +1,5 @@
 import asyncio
+import time
 from logging import getLogger
 from typing import Any, List, Type, TypeVar, get_args, get_origin, overload
 
@@ -32,6 +33,7 @@ class MotorController(TelnetDriver):
         super().__init__(id, ip, port, prompt, encoding, command_terminator="\r")
         self._move_lock = asyncio.Lock()
         self._centered = {a: False for a in Axis}
+        self._motor_on = {a: False for a in Axis}
 
     def is_centered(self, axis: Axis) -> bool:
         return self._centered[axis]
@@ -128,18 +130,24 @@ class MotorController(TelnetDriver):
         await self.send_command(Commands.OPEN_PROGRAM0)
         await self.send_command(Commands.SET_RAMPING)
 
-    async def _movement_stopped(self, axis: Axis | None = None):
+    async def _movement_stopped(self, axis: Axis | None = None, initial_wait: float = 0):
         is_moving = True
         try:
+            start = time.perf_counter()
+            calls = 0
+            await asyncio.sleep(initial_wait)
             while is_moving:
+                calls += 1
                 is_moving = await self.send_command(Commands.CHECK_IN_MOTION(), bool)
                 # Prevent busy-wait condition (constantly pinging the controller)
-                await asyncio.sleep(1.0)
+                # await asyncio.sleep(0.01)
+            total_time = time.perf_counter() - start
+            _log.info(f"Time waiting for movement to stop: {total_time}, {calls=}, {total_time/calls} per call")
         except KeyboardInterrupt:
             if axis is not None:
                 await self.send_command(Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)))
                 await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
-                await self.send_command(Commands.DRIVE_OFF(axis))
+                # await self.send_command(Commands.DRIVE_OFF(axis))
                 raise
             else:
                 raise
@@ -166,16 +174,21 @@ class MotorController(TelnetDriver):
             perpendicular_axis = PERPENDICULAR_AXIS[axis]
             await self._move_to_position_unsafe(perpendicular_axis, 200)
             await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
-            await self.send_command(Commands.DRIVE_OFF(axis))
+            # await self.send_command(Commands.DRIVE_OFF(axis))
             await self._movement_stopped(perpendicular_axis)
             if not await self._is_axis_clear_to_move_unsafe(axis):
                 await self.send_command(Commands.DRIVE_OFF(axis))
                 raise DeviceMalfunctionError(f"Axis {perpendicular_axis} cannot be cleared")
         move_command = Commands.RELATIVE_MOVE if relative else Commands.MOVE
-        await self.send_command(Commands.DRIVE_ON(axis))
-        await self.send_command(move_command(axis, position))
-        await self._movement_stopped(axis)
-        await self.send_command(Commands.DRIVE_OFF(axis))
+        if self._motor_on[axis]:
+            _log.info('Motor already on.')
+        else:
+            _log.info('Starting motor.')
+            await self.send_command(Commands.DRIVE_ON(axis))
+            self._motor_on[axis] = True
+        await self.send_command(move_command(axis, position) + " : " + Commands.WAIT_UNTIL_STOP)
+        # await self._movement_stopped(axis)
+        # await self.send_command(Commands.DRIVE_OFF(axis))
         return
 
     @with_lock_named("_move_lock")
@@ -186,6 +199,7 @@ class MotorController(TelnetDriver):
         await self._move_to_position_unsafe(axis, 200)
         await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
         await self.send_command(Commands.DRIVE_OFF(axis))
+        self._motor_on[axis] = False
 
     @with_lock_named("_move_lock")
     async def center_axis(self, axis):
@@ -197,13 +211,17 @@ class MotorController(TelnetDriver):
                 await self.send_command(Commands.DRIVE_OFF(axis))
                 raise DeviceMalfunctionError(f"Axis {axis} cannot be cleared")
         if self.is_centered(axis):
-            _log.debug("Device already centered")
-            await self._move_to_position_unsafe(axis, 0)
+            _log.info("Device already centered")
+            # await self._move_to_position_unsafe(axis, 0)
             return
+        _log.info("Centering device...")
         await self._move_to_position_unsafe(axis, -200)
-        await self._movement_stopped(axis)
+        await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
+        self._motor_on[axis] = False
+        # await self._movement_stopped(axis)
         await self._move_to_position_unsafe(axis, MID_POINT_OFFSETS[axis], relative=True)
-        await self._movement_stopped(axis)
+        # await self._movement_stopped(axis)
         await self.send_command(Commands.RESET_AXIS(axis))
-        await self.send_command(Commands.DRIVE_OFF(axis))
+        # await self.send_command(Commands.DRIVE_OFF(axis))
         self._centered[axis] = True
+        _log.info(f"Axis {axis} centered.")
