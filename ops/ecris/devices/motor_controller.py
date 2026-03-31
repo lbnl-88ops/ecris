@@ -29,11 +29,13 @@ class MotorController(TelnetDriver):
         port: int | None = None,
         prompt: str = "SYS>",
         encoding: str = "ascii",
+        fast_ramp: bool = False
     ):
         super().__init__(id, ip, port, prompt, encoding, command_terminator="\r")
         self._move_lock = asyncio.Lock()
         self._centered = {a: False for a in Axis}
         self._motor_on = {a: False for a in Axis}
+        self._fast_ramp = fast_ramp
 
     def is_centered(self, axis: Axis) -> bool:
         return self._centered[axis]
@@ -128,7 +130,10 @@ class MotorController(TelnetDriver):
     async def _setup(self) -> None:
         self._prompt = "P00>"
         await self.send_command(Commands.OPEN_PROGRAM0)
-        await self.send_command(Commands.SET_RAMPING)
+        if self._fast_ramp:
+            await self.send_command(Commands.SET_FAST_RAMPING)
+        else:
+            await self.send_command(Commands.SET_RAMPING)
 
     async def _movement_stopped(self, axis: Axis | None = None, initial_wait: float = 0):
         is_moving = True
