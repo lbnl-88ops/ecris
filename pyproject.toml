@@ -10,6 +10,7 @@ authors = [
     {name = "Jessica Rehak", email = "rehak@lbl.gov"}
 ]
 dependencies = [
+    "phidget22",
     "numpy",
     "matplotlib",
     "pandas",
