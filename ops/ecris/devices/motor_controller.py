@@ -29,7 +29,7 @@ class MotorController(TelnetDriver):
         port: int | None = None,
         prompt: str = "SYS>",
         encoding: str = "ascii",
-        fast_ramp: bool = False
+        fast_ramp: bool = False,
     ):
         super().__init__(id, ip, port, prompt, encoding, command_terminator="\r")
         self._move_lock = asyncio.Lock()
@@ -131,10 +131,10 @@ class MotorController(TelnetDriver):
         self._prompt = "P00>"
         await self.send_command(Commands.OPEN_PROGRAM0)
         if self._fast_ramp:
-            _log.info('Setting up motor controller with fast ramping')
+            _log.info("Setting up motor controller with fast ramping")
             await self.send_command(Commands.SET_FAST_RAMPING)
         else:
-            _log.warning('Setting up motor controller with slow ramping')
+            _log.warning("Setting up motor controller with slow ramping")
             await self.send_command(Commands.SET_RAMPING)
 
     async def _movement_stopped(self, axis: Axis | None = None, initial_wait: float = 0):
@@ -149,7 +149,9 @@ class MotorController(TelnetDriver):
                 # Prevent busy-wait condition (constantly pinging the controller)
                 # await asyncio.sleep(0.01)
             total_time = time.perf_counter() - start
-            _log.info(f"Time waiting for movement to stop: {total_time}, {calls=}, {total_time/calls} per call")
+            _log.info(
+                f"Time waiting for movement to stop: {total_time}, {calls=}, {total_time / calls} per call"
+            )
         except KeyboardInterrupt:
             if axis is not None:
                 await self.send_command(Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)))
@@ -188,12 +190,20 @@ class MotorController(TelnetDriver):
                 raise DeviceMalfunctionError(f"Axis {perpendicular_axis} cannot be cleared")
         move_command = Commands.RELATIVE_MOVE if relative else Commands.MOVE
         if self._motor_on[axis]:
-            _log.info('Motor already on.')
+            _log.info("Motor already on.")
         else:
-            _log.info('Starting motor.')
+            _log.info("Starting motor.")
             await self.send_command(Commands.DRIVE_ON(axis))
             self._motor_on[axis] = True
-        await self.send_command(move_command(axis, position) + " : " + Commands.WAIT_UNTIL_STOP)
+        try:
+            await self.send_command(
+                move_command(axis, position) + " : " + Commands.WAIT_UNTIL_STOP
+            )
+        except KeyboardInterrupt:
+            await self.send_command(Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)))
+            await self.send_command(Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)))
+            await self.send_command(Commands.DRIVE_OFF(axis))
+            raise
         # await self._movement_stopped(axis)
         # await self.send_command(Commands.DRIVE_OFF(axis))
         return

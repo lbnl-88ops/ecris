@@ -123,10 +123,9 @@ class TestAllAxes(MoveSequences):
         expected_commands = (
             [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
             + self._move_to(axis, -200, move_steps[0])
-            + self._in_motion_check(coastdown[0])
+            + [Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis))]
             + self._move_to(axis, MID_POINT_OFFSETS[axis], move_steps[1], relative=True)
-            + self._in_motion_check(coastdown[1])
-            + [Commands.RESET_AXIS(axis), Commands.DRIVE_OFF(axis)]
+            + [Commands.RESET_AXIS(axis)]
         )
 
         test = set_up_test(
@@ -150,9 +149,7 @@ class TestAllAxes(MoveSequences):
         move_steps = [3]
         motor._centered[axis] = True
 
-        expected_commands = [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)] + self._move_to(
-            axis, 0, move_steps[0]
-        )
+        expected_commands = [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
 
         test = set_up_test(
             mock_motor_controller,
@@ -179,13 +176,12 @@ class TestAllAxes(MoveSequences):
         expected_commands = (
             [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
             + self._move_out_sequence(perpendicular_axis, move_steps[0])
-            + self._in_motion_check(coastdown_steps[0])
+            + self._in_motion_check(coastdown_steps[0])  # _movement_stopped after move_out
             + [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]  # The final safety check
             + self._move_to(axis, -200, move_steps[1])
-            + self._in_motion_check(coastdown_steps[1])
+            + [Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis))]
             + self._move_to(axis, MID_POINT_OFFSETS[axis], move_steps[2], relative=True)
-            + self._in_motion_check(coastdown_steps[2])
-            + [Commands.RESET_AXIS(axis), Commands.DRIVE_OFF(axis)]
+            + [Commands.RESET_AXIS(axis)]
         )
 
         # The setup is identical.
@@ -260,11 +256,13 @@ class TestMoveSequencesWithRelative(MoveSequences):
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
         move_steps = [2, 3]
         coastdown_steps = [1]
-        clearing_move = self._move_to(perpendicular_axis, 200, move_steps[0])
-        cleanup = self._cleanup_after_limit_sequence(axis, coastdown_steps=coastdown_steps[0])
-        primary_move = self._move_to(axis, position_to_move, move_steps[1], relative)
 
-        expected_commands = [primary_move[0]] + clearing_move + cleanup + primary_move[1:]
+        expected_commands = (
+            [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
+            + self._move_to(perpendicular_axis, 200, move_steps[0])
+            + [Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)), Commands.CHECK_IN_MOTION()]
+            + self._move_to(axis, position_to_move, move_steps[1], relative)
+        )
 
         test = set_up_test(
             mock_motor_controller,
@@ -288,13 +286,16 @@ class TestMoveSequencesWithRelative(MoveSequences):
         perpendicular_axis = PERPENDICULAR_AXIS[axis]
         move_steps = [4, 3]
 
-        clearing_move = self._move_to(perpendicular_axis, 200, move_steps[0])
-        cleanup = self._cleanup_after_limit_sequence(axis)
-        primary_move = self._move_to(axis, position_to_move, move_steps[1], relative)
-
         expected_commands = (
-            [primary_move[0]] + clearing_move + cleanup + [Commands.DRIVE_OFF(axis)]
-        )  # Drive off due to error
+            [Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis)]
+            + self._move_to(perpendicular_axis, 200, move_steps[0])
+            + [
+                Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)),
+                Commands.CHECK_IN_MOTION(),
+                Commands.CHECK_PERPENDICULAR_AXIS_CLEAR(axis),
+                Commands.DRIVE_OFF(axis),
+            ]
+        )
 
         test = set_up_test(
             mock_motor_controller,
@@ -318,9 +319,9 @@ class TestMoveSequencesWithRelative(MoveSequences):
         move_steps = [4, 3]
 
         primary_move = self._move_to(axis, position_to_move, move_steps[1], relative)
-        step_to_interrupt = 5
+        step_to_interrupt = 3
 
-        expected_commands = primary_move[:step_to_interrupt] + [
+        expected_commands = primary_move[: step_to_interrupt - 1] + [
             Commands.SET_BIT(Bit.KILL_ALL_MOVES(axis)),
             Commands.CLEAR_BIT(Bit.KILL_ALL_MOVES(axis)),
             Commands.DRIVE_OFF(axis),
@@ -332,7 +333,7 @@ class TestMoveSequencesWithRelative(MoveSequences):
                 FakeState.MotionSteps: move_steps,
                 FakeState.DecrementMotionOnCheck: True,
                 FakeState.InterruptAfterCommands: (
-                    step_to_interrupt,
+                    step_to_interrupt - 1,
                     KeyboardInterrupt,
                 ),
             },

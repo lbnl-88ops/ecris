@@ -3,7 +3,9 @@ from typing import Any, Dict, List, Tuple
 from unittest.mock import call
 
 from ops.ecris.devices.motor_controller_specification import Axis
-from ops.ecris.legacy.mappings import LEGACY_AXIS_MAPPING
+from ops.ecris.devices.motor_controller_specification import Axis
+
+LEGACY_AXIS_MAPPING = {Axis.VenusX: 0, Axis.VenusY: 1, Axis.AcerX: 2, Axis.AcerY: 3}
 
 
 class FakeMotorController:
@@ -108,45 +110,56 @@ class FakeMotorController:
             else:
                 self.exception_timer = (value - 1, exception)
         self.command_log.append(raw_command)
-        command = raw_command.decode("ascii").strip()
-        command_return = None
+        command_str = raw_command.decode("ascii").strip()
 
-        if command == "PROG0":
-            self._prompt = "POO> "
-        elif command.startswith("?BIT("):
-            queried_bit = int(command.removeprefix("?BIT(")[:-1])
-            match queried_bit:
-                case 16128:
-                    command_return = int(self.axis_clear_states[Axis.VenusX])
-                case 16160:
-                    command_return = int(self.axis_clear_states[Axis.VenusY])
-                case 16192:
-                    command_return = int(self.axis_clear_states[Axis.AcerX])
-                case 16224:
-                    command_return = int(self.axis_clear_states[Axis.AcerY])
-                case 516:
-                    command_return = int(self._current_motion_steps > 0)
-                    self._move()
-        elif command == "VER":
-            command_return = "1.0.0"
-        elif command == "ATTACH":
-            command_return = 'ATTACH MASTER0\r\nATTACH SLAVE0 AXIS0 "X"\r\nATTACH SLAVE1 AXIS1 "Y"\r\nATTACH SLAVE2 AXIS2 "Z"\r\nATTACH SLAVE3 AXIS3 "A"'
-        elif (
-            command.startswith("X")
-            or command.startswith("Y")
-            or command.startswith("Z")
-            or command.startswith("A")
-        ):  # move command
-            self._put_in_motion()
-        elif command.startswith("DRIVE OFF"):
-            if self.coastdown_steps_remaining and not self.coasting_down:
-                self.coasting_down = True
-                self._current_motion_steps = self.coastdown_steps_remaining.pop(0)
+        # Handle chained commands
+        commands = [c.strip() for c in command_str.split(":")]
 
-        if command_return is not None:
-            self._to_buffer(command + "\r\n" + str(command_return))
+        last_return = None
+        for command in commands:
+            command_return = None
+            if command == "PROG0":
+                self._prompt = "POO> "
+            elif command.startswith("?BIT("):
+                queried_bit = int(command.removeprefix("?BIT(")[:-1])
+                match queried_bit:
+                    case 16128:
+                        command_return = int(self.axis_clear_states[Axis.VenusX])
+                    case 16160:
+                        command_return = int(self.axis_clear_states[Axis.VenusY])
+                    case 16192:
+                        command_return = int(self.axis_clear_states[Axis.AcerX])
+                    case 16224:
+                        command_return = int(self.axis_clear_states[Axis.AcerY])
+                    case 516:
+                        command_return = int(self._current_motion_steps > 0)
+                        self._move()
+            elif command == "VER":
+                command_return = "1.0.0"
+            elif command == "ATTACH":
+                command_return = 'ATTACH MASTER0\r\nATTACH SLAVE0 AXIS0 "X"\r\nATTACH SLAVE1 AXIS1 "Y"\r\nATTACH SLAVE2 AXIS2 "Z"\r\nATTACH SLAVE3 AXIS3 "A"'
+            elif any(command.startswith(axis.value) for axis in Axis):
+                # move command
+                self._put_in_motion()
+            elif command.startswith("DRIVE OFF"):
+                if self.coastdown_steps_remaining and not self.coasting_down:
+                    self.coasting_down = True
+                    self._current_motion_steps = self.coastdown_steps_remaining.pop(0)
+            elif command == "INH-516":
+                # Inhibit until stop - consume all motion steps
+                self._current_motion_steps = 0
+                if self.coasting_down:
+                    self.coasting_down = False
+                if self.axis_clear_after_stop is not None:
+                    self.axis_clear_states[self.axis_clear_after_stop] = True
+
+            if command_return is not None:
+                last_return = command_return
+
+        if last_return is not None:
+            self._to_buffer(command_str + "\r\n" + str(last_return))
         else:
-            self._to_buffer(command)
+            self._to_buffer(command_str)
 
 
 class FakeState(Enum):
