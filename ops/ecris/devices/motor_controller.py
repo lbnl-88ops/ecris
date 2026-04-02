@@ -131,8 +131,10 @@ class MotorController(TelnetDriver):
         self._prompt = "P00>"
         await self.send_command(Commands.OPEN_PROGRAM0)
         if self._fast_ramp:
+            _log.info('Setting up motor controller with fast ramping')
             await self.send_command(Commands.SET_FAST_RAMPING)
         else:
+            _log.warning('Setting up motor controller with slow ramping')
             await self.send_command(Commands.SET_RAMPING)
 
     async def _movement_stopped(self, axis: Axis | None = None, initial_wait: float = 0):
