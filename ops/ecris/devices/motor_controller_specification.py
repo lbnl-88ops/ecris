@@ -46,7 +46,9 @@ class Commands(StrEnum):
     GET_ATTACHMENTS = "ATTACH"
     OPEN_PROGRAM0 = "PROG0"
     SET_RAMPING = "ACC 5 DEC 5 VEL 15 STP 100"
+    SET_FAST_RAMPING = "ACC 30 DEC 30 VEL 20 STP 100"
     GET_SCALE = "?P12375"
+    WAIT_UNTIL_STOP = "INH-516"
 
     @staticmethod
     def GET_POSITION(axis: Axis) -> str:

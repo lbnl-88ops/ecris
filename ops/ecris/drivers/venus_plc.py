@@ -67,6 +67,7 @@ VENUS_PLC_DATA_DEFINITIONS = DeviceData(
             ("South (top knob) slit", None, "slit_south"),
             ("North (bottom know) slit", None, "slit_north"),
             ("Tuner ID", None, "tuner_number"),
+            ("Beam element", None, "beam_element"),
         ],
         "Cryostat": [
             (

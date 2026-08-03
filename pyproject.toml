@@ -10,6 +10,7 @@ authors = [
     {name = "Jessica Rehak", email = "rehak@lbl.gov"}
 ]
 dependencies = [
+    "phidget22",
     "numpy",
     "matplotlib",
     "pandas",
@@ -23,7 +24,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-version = "1.0.0"
+version = "1.1.0"
 packages = [ { include = "ops/ecris" } ]
 
 [tool.poetry.group.dev.dependencies]
