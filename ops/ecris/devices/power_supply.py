@@ -39,6 +39,7 @@ class BiasedVoltageSource(VoltageSource):
         self._bias_function = bias_function
 
     async def set_voltage(self, voltage: float) -> None:
+        biased_voltage = self._bias_function(voltage)
         return await super().set_voltage(self._bias_function(voltage))
 
 
