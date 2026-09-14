@@ -148,6 +148,8 @@ VENUS_PLC_DATA_DEFINITIONS = DeviceData(
             ("nan", "nan", "klystron_rf_transmitted"),
             ("X-rays at the plasma chamber source exit", "mrem", "x_ray_exit"),
             ("X-rays at plasma chamber high voltage cage", "mrem", "x_ray_source"),
+            ("Gyrotron high voltage power supply voltage", "kV", "gyrotron_hvps_voltage"),
+            ("Gyrotron high voltage power supply current", "A", "gyrotron_hvps_current"),
         ],
         "Superconductor": [
             ("Extraction coil current", "A", "ext_i"),
