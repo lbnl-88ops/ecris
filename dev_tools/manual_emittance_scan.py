@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 import logging
+import uuid
 
 import numpy as np
 
@@ -25,49 +26,47 @@ from ops.ecris.drivers.venus_plc import VENUSController, VenusPLC
 from ops.ecris.devices.exceptions import InterlockError
 from ops.ecris.operations.emittance_scan import LinearEmittanceScan, LinearScanParameters
 from ops.ecris.operations.emittance_scan.save_scan import save_emittance_scan
+from ops.ecris.drivers.phidget import PhidgetVoltageOutput
 
 # Set up basic logging to see the output from our scan classes
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 _log = logging.getLogger()
 
 
-async def main(args):
+async def main():
     _log.info("--- Manual Emittance Scan Tool ---")
 
     _log.info("Assembling hardware drivers and logical devices...")
 
     # Drivers
     labjack_driver = LabJack()
-    venus_plc_driver = VenusPLC(VENUSController(read_only=True))
+    venus = VENUSController(read_only=True)
+    venus_plc_driver = VenusPLC(venus)
 
     async def is_fcv1_out() -> bool:
         # fcv1_in is True when IN (blocking), False when OUT (clear)
         return not bool(await venus_plc_driver.read_data(VenusPLC.DataKeys.FARADAY_CUP_IN))
 
-    motor_driver = MotorController(ip="10.10.100.60", port=5002)
+    motor_controller = MotorController(ip="10.10.100.60", port=5002, fast_ramp=True)
+    await asyncio.wait_for(motor_controller.connect(), timeout=20)
+    _log.info("Motor controller connected")
 
-    if args.scale_factor is not None:
         # Voltage-mode: instrument reads voltage; scale_factor converts V → A (or desired units).
-        keithley_driver = Keithley.connect_at_usb(
-            resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR",
-            aperture_time=1e-3,
-            mode=SCPIDriver.MeasurementMode.VOLTAGE,
-        )
-        scanner_ammeter = BiasedAmmeter(
-            connection=keithley_driver,
-            read_key=Keithley.DataKeys.VOLTAGE,
-            bias_function=SCALE_VALUE(args.scale_factor),
-        )
-    else:
-        # Current-mode: default behaviour — clamp negative readings to zero.
-        keithley_driver = Keithley.connect_at_usb(
-            resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR", aperture_time=1e-3
-        )
-        scanner_ammeter = BiasedAmmeter(
-            connection=keithley_driver,
-            read_key=Keithley.DataKeys.CURRENT,
-            bias_function=POSITIVE_VALUES_ONLY,
-        )
+    keithley_driver = Keithley.connect_at_usb(
+        resource_name="USB0::1510::29970::04684146\x00\x00::0::INSTR",
+        aperture_time=1e-3,
+        mode=SCPIDriver.MeasurementMode.VOLTAGE,
+    )
+    _log.info("Connected to Keithley via USB.")
+    await keithley_driver.connect()
+    await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_FUNCTION)
+    await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_AUTOZERO_OFF)
+    await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_DELAY_DISABLE)
+    await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_AUTO_RANGE_OFF)
+    await keithley_driver.send_silent_command(SCPIDriver.Commands.set_voltage_range(10))
+
+    phidget = PhidgetVoltageOutput(serial_number=717445, channel=0)
+    await phidget.connect()
 
     deflector_v_source = BiasedVoltageSource(
         connection=labjack_driver,
@@ -75,13 +74,15 @@ async def main(args):
         bias_function=LABJACK_DEFLECTION_PLATE_BIAS,
     )
 
-    extraction_voltmeter = Voltmeter(
-        connection=venus_plc_driver, read_key=VenusPLC.DataKeys.EXTRACTION_VOLTAGE
-    )
-
     dpc = DeflectionPlateController(
-        extraction_voltmeter=extraction_voltmeter,
-        deflection_voltage_source=deflector_v_source,
+        extraction_voltmeter=Voltmeter(
+            connection=venus_plc_driver, read_key=VenusPLC.DataKeys.EXTRACTION_VOLTAGE
+        ),
+        deflection_voltage_source=BiasedVoltageSource(
+            connection=phidget,
+            set_key=PhidgetVoltageOutput.DataKeys.VOLTAGE,
+            bias_function=SCALE_VALUE(0.01)
+        ),
     )
 
     scan_parameters = LinearScanParameters(
@@ -95,128 +96,44 @@ async def main(args):
         samples_per_point=1,
     )
 
-    if args.centered:
-        _log.info("Motor is already centered")
-        motor_driver._centered[scan_parameters.axis] = True
+    while True:
+        _log.info("--- Manual emittance scan ---")
+        _log.info(f"Current parameters: {scan_parameters}")
 
-    # Emittance scan
-    scan_operation = LinearEmittanceScan(
-        motor=motor_driver,
+        
+    
+
+
+        # Emittance scan
+        scaling_factor = int(venus.read(["emittance_keithley_multiplier"]))
+        _log.info(f"Scaling factor set to {scaling_factor}")
+        scanner_ammeter = BiasedAmmeter(
+            connection=keithley_driver,
+            read_key=Keithley.DataKeys.VOLTAGE,
+            bias_function=SCALE_VALUE(-10**(-scaling_factor)),
+        )
+        scan_operation = LinearEmittanceScan(
+            motor=motor_controller,
         ammeter=scanner_ammeter,
         deflection_plate_controller=dpc,
         scan_params=scan_parameters,
         interlock_check=is_fcv1_out,
-    )
+        )
+        await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
+        results = await scan_operation.run(keep_centered=True, disconnect_on_end=False)
 
-    # result = await scan_operation.run()
-    # save_emittance_scan(
-    #     filepath="scan.h5",
-    #     data=result,
-    #     parameters=scan_parameters,
-    #     additional_metadata={"user": "manual_emittance_scan"},
-    # )
-
-    _log.info("--- Scan Configuration Summary ---")
-    _log.info(f"               Axis: {scan_parameters.axis.name}")
-    _log.info(
-        f"     Position Range: {scan_parameters.position_min} to {scan_parameters.position_max} (step: {scan_parameters.position_step})"
-    )
-    _log.info(
-        f"   Divergence Range: {scan_parameters.divergence_min} to {scan_parameters.divergence_max} (step: {scan_parameters.divergence_step})"
-    )
-    _log.info(f"Samples per point: {scan_parameters.samples_per_point}")
-    print("-" * 40)
-
-    while True:
-        response = await asyncio.to_thread(input, "Proceed with the scan? (y/n): ")
-        if response.lower().strip() == "y":
-            break
-        elif response.lower().strip() == "n":
-            _log.warning("Scan cancelled by user.")
-            return
-        else:
-            print("Invalid input. Please enter 'y' or 'n'.")
-
-    _log.info("User confirmed. Starting scan...")
-    try:
-        await keithley_driver.connect()
-
-        if args.scale_factor is not None:
-            # Voltage Mode setup
-            await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_AUTOZERO_OFF)
-            await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_DELAY_DISABLE)
-            await keithley_driver.send_silent_command(SCPIDriver.Commands.VOLTAGE_AUTO_RANGE_OFF)
-            await keithley_driver.send_silent_command(
-                SCPIDriver.Commands.set_voltage_range(100e-3)
-            )
-            await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
-        else:
-            # Current Mode setup
-            await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_OFF)
-            await keithley_driver.send_silent_command(SCPIDriver.Commands.CURRENT_DELAY_DISABLE)
-            await keithley_driver.send_silent_command(SCPIDriver.Commands.CURRENT_AUTO_RANGE_OFF)
-            await keithley_driver.send_silent_command(SCPIDriver.Commands.set_range(10e-6))
-            await keithley_driver.send_silent_command(SCPIDriver.Commands.AUTOZERO_ONCE)
-
-        try:
-            results = await scan_operation.run(keep_centered=False)
-        except InterlockError as e:
-            _log.error(f"Scan aborted: {e}")
-            return
-        _log.info("Scan completed successfully.")
+        id = uuid.uuid7()
         save_emittance_scan(
-            filepath="scan.h5",
+            filepath=f"manual_scan_{id}.h5",
             data=results,
             parameters=scan_parameters,
             additional_metadata={"user": "manual_emittance_scan"},
         )
 
-        if args.output:
-            _log.info(f"Saving results matrix to {args.output}")
-            np.savetxt(args.output, results, delimiter=",", fmt="%.6e")
-            _log.info("Save complete.")
-        else:
-            _log.info("Scan results (shape {}):".format(results.shape))
-            print(results)
 
-    finally:
-        await keithley_driver.disconnect()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run a manual emittance scan.")
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        default=None,
-        help="Optional path to save the resulting data matrix as a CSV file.",
-    )
-    parser.add_argument(
-        "--scale-factor",
-        type=float,
-        default=None,
-        help=(
-            "If provided, the Keithley is placed in VOLTAGE measurement mode and each "
-            "raw voltage reading is multiplied by this factor (e.g. to convert V → A). "
-            "When omitted the instrument defaults to CURRENT mode with POSITIVE_VALUES_ONLY."
-        ),
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="Enable verbose DEBUG level logging.",
-    )
-    parser.add_argument(
-        "-c",
-        "--centered",
-        action="store_true",
-        help="Drive is already centered",
-    )
+    _log.setLevel(logging.DEBUG)
 
-    args = parser.parse_args()
-    if args.verbose:
-        _log.setLevel(logging.DEBUG)
-
-    asyncio.run(main(args))
+    asyncio.run(main())
